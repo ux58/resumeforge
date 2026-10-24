@@ -1,0 +1,28 @@
+.host {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: pop-in 0.25s var(--ease-out) both;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  max-width: 360px;
+  font-size: 13px;
+
+  &.ok svg { color: var(--ok); }
+  &.err svg { color: var(--danger); }
+  &.info svg { color: var(--accent); }
+}

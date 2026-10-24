@@ -1,0 +1,50 @@
+.wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.card {
+  width: 380px;
+  padding: 34px 32px 30px;
+  animation: fade-up 0.4s var(--ease-out) both;
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+}
+
+.badge {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 14px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  animation: pop-in 0.35s var(--ease-out) 0.1s both;
+}
+
+.sub {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 0 0 22px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .btn { width: 100%; margin-top: 6px; }
+}
+
+.hint {
+  color: var(--text-faint);
+  font-size: 12px;
+}

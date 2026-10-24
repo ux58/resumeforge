@@ -1,0 +1,37 @@
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 22px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.brand {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.meta {
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+
+.paperArea {
+  flex: 1;
+  padding: 26px 16px 60px;
+  overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .paperArea { padding: 14px 8px 40px; }
+}

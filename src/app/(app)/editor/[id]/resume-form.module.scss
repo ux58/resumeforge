@@ -1,0 +1,105 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sectionHead {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  &:hover { background: var(--bg-hover); }
+}
+
+.chev { color: var(--text-faint); transition: transform var(--dur-fast); }
+.chevOpen { transform: rotate(180deg); }
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.tip {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.repeater {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+
+  .del {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 3px 7px;
+  }
+}
+
+.addBtn {
+  align-self: flex-start;
+  font-size: 12.5px;
+}
+
+.skillRows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skillRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  input { flex: 1; }
+}
+
+.level {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.levelDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  padding: 0;
+  &.levelOn { background: var(--accent); border-color: var(--accent); }
+}
+
+@media (max-width: 640px) {
+  .grid2 { grid-template-columns: 1fr; }
+}
