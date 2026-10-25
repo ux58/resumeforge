@@ -107,9 +107,8 @@
 }
 
 .scaleInner {
-  transform-origin: top center;
+  transform-origin: top left;
   width: 210mm;
-  margin: 0 auto;
 }
 
 @media print {

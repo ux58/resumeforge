@@ -275,21 +275,25 @@ export function Editor({ initial }: { initial: ResumeDto }) {
   );
 }
 
-/** A4 纸自适应缩放：按容器宽度计算 scale，杜绝右侧裁切（替代脆弱的 zoom 媒体查询） */
+/** A4 纸自适应缩放：容器内完整显示（水平居中 + 等比缩放），任意面板/窗口宽度零裁切 */
 function PaperScaler({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [fit, setFit] = useState({ scale: 1, dx: 0 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const A4_W = 794; // 210mm @96dpi
-    const ro = new ResizeObserver(() => setScale(Math.min(1, (el.clientWidth - 8) / A4_W)));
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      const scale = Math.min(1, (w - 12) / A4_W);
+      setFit({ scale, dx: Math.max(0, (w - A4_W * scale) / 2) });
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
   return (
-    <div ref={ref} className={styles.scaleWrap} style={{ height: Math.round(1123 * scale) + 48 }}>
-      <div className={styles.scaleInner} style={{ transform: `scale(${scale})` }}>
+    <div ref={ref} className={styles.scaleWrap} style={{ height: Math.round(1123 * fit.scale) + 48 }}>
+      <div className={styles.scaleInner} style={{ transform: `translateX(${fit.dx}px) scale(${fit.scale})` }}>
         {children}
       </div>
     </div>
