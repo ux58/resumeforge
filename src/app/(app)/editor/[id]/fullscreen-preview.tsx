@@ -26,19 +26,35 @@ export function FullscreenPreview({
   theme: ThemeId;
   onClose: () => void;
 }) {
-  const areaRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<FitMode>("width");
   const [zoom, setZoom] = useState(1);
   const [box, setBox] = useState({ w: 0, h: 0 });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
-  useEffect(() => {
-    const el = areaRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    return () => ro.disconnect();
+  const measure = useCallback(() => {
+    const el = stageRef.current;
+    if (el && el.clientWidth > 0) setBox({ w: el.clientWidth, h: el.clientHeight });
   }, []);
+
+  // 该嵌入式 webview 的 ResizeObserver 不发初始回调：同步测量 + 双帧 rAF + resize 兜底
+  useEffect(() => {
+    measure();
+    const r1 = requestAnimationFrame(measure);
+    const r2 = requestAnimationFrame(() => requestAnimationFrame(measure));
+    const el = stageRef.current;
+    const ro = new ResizeObserver(measure);
+    if (el) ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [measure]);
 
   useEffect(() => {
     const el = overlayRef.current;
@@ -58,9 +74,34 @@ export function FullscreenPreview({
 
   const base = mode === "width" ? (box.w - 48) / A4_W : Math.min(3, (box.w - 48) / A4_W, (box.h - 32) / A4_H);
   const scale = Math.max(0.3, Math.min(4, base * zoom));
-  const dx = Math.max(0, (box.w - A4_W * scale) / 2);
+  // dx 相对 holder：width 模式 holder=容器宽（需要居中偏移）；page 模式 holder=纸宽（dx=0，margin auto 已居中）
+  const holderW = mode === "width" ? Math.max(0, box.w - 48) : Math.round(A4_W * scale);
+  const dx = Math.max(0, Math.round((holderW - A4_W * scale) / 2));
+  const paperH = Math.round(A4_H * scale) + 24;
+  const marginTop = Math.max(0, Math.round((box.h - 40 - paperH) / 2));
 
   const setZoomStep = useCallback((dir: 1 | -1) => setZoom((z) => Math.max(0.4, Math.min(4, +(z + dir * 0.25).toFixed(2)))), []);
+
+  /** 拖拽平移：按住拖动滚动内容（放大超出视口时最实用） */
+  function onDragStart(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0) return;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* 部分环境拒绝 capture，拖拽仍继续 */ }
+    setDragging(true);
+  }
+  function onDragMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return;
+    const content = stageRef.current?.querySelector<HTMLElement>('.scroll-area-content');
+    if (!content) return;
+    content.scrollLeft -= e.clientX - dragRef.current.x;
+    content.scrollTop -= e.clientY - dragRef.current.y;
+    dragRef.current = { x: e.clientX, y: e.clientY };
+  }
+  function onDragEnd(e: React.PointerEvent<HTMLDivElement>) {
+    dragRef.current = null;
+    setDragging(false);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* 忽略 */ }
+  }
 
   return (
     <div ref={overlayRef} className={styles.overlay} role="dialog" aria-label="简历全屏预览">
@@ -77,10 +118,17 @@ export function FullscreenPreview({
         <span className={styles.hint}>Esc 关闭</span>
         <button className="btn" onClick={onClose} aria-label="关闭全屏预览"><X size={15} /> 关闭</button>
       </header>
-      <div ref={areaRef} className={styles.stage}>
+      <div
+        ref={stageRef}
+        className={`${styles.stage} ${dragging ? styles.stageDragging : ""}`}
+        onPointerDown={onDragStart}
+        onPointerMove={onDragMove}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
+      >
         {box.w === 0 && <p className={styles.loadingText}>正在计算最佳缩放…</p>}
         <ScrollArea className={styles.stageScroll} ariaLabel="全屏简历预览">
-          <div className={styles.paperHolder} style={{ width: Math.round(A4_W * scale), height: Math.round(A4_H * scale) + 24 }}>
+          <div className={styles.paperHolder} style={{ width: holderW, height: paperH, marginTop }}>
             <div className={styles.paperInner} style={{ transform: `translateX(${dx}px) scale(${scale})` }}>
               <ResumePreview data={data} template={template} theme={theme} />
             </div>
