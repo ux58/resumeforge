@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, FileText, Gauge, Printer, Share2 } from "lucide-react";
+import { ArrowLeft, Download, Gauge, History, Printer, Share2, Wand2, FileUp } from "lucide-react";
 import { apiJsonBody } from "@/shared/api-client";
 import { toast } from "@/components/toast";
 import type { ResumeData, TemplateId, ThemeId } from "@/features/resumes/schema";
-import { resumeDataSchema } from "@/features/resumes/schema";
 import type { ResumeDto } from "@/features/resumes/service";
 import { ResumePreview } from "@/components/resume-preview";
 import { ResumeForm } from "./resume-form";
 import { AnalyzerPanel } from "./analyzer-panel";
+import { HistoryPanel } from "./history-panel";
+import { OptimizePanel } from "./optimize-panel";
+import { ImportDialog } from "./import-dialog";
 import styles from "./editor.module.scss";
 
 const TEMPLATES: Array<{ id: TemplateId; name: string }> = [
@@ -33,6 +35,9 @@ export function Editor({ initial }: { initial: ResumeDto }) {
   const [theme, setTheme] = useState<ThemeId>(initial.theme);
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving" | "error">("saved");
   const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showOptimize, setShowOptimize] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [shareEnabled, setShareEnabled] = useState(initial.shareEnabled);
   const dirtyRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,11 +48,11 @@ export function Editor({ initial }: { initial: ResumeDto }) {
   }, []);
 
   const save = useCallback(
-    async (silent = false) => {
-      if (!dirtyRef.current) return;
+    async (silent = false, source: "edit" | "autosave" | "optimize" | "rollback" = "autosave") => {
+      if (!dirtyRef.current && source === "autosave") return;
       setSaveState("saving");
       try {
-        await apiJsonBody("PATCH", `/api/resumes/${initial.id}`, { title, data, template, theme });
+        await apiJsonBody("PATCH", `/api/resumes/${initial.id}`, { title, data, template, theme, source });
         dirtyRef.current = false;
         setSaveState("saved");
         if (!silent) toast.ok("已保存");
@@ -86,7 +91,7 @@ export function Editor({ initial }: { initial: ResumeDto }) {
     [markDirty],
   );
 
-  const analysis = useMemo(() => (showAnalyzer ? null : null), [showAnalyzer]); // 面板内部自行计算
+  const analysis = useMemo(() => (showAnalyzer || showHistory || showOptimize), [showAnalyzer, showHistory, showOptimize]);
   void analysis;
 
   async function toggleShare() {
@@ -166,7 +171,16 @@ export function Editor({ initial }: { initial: ResumeDto }) {
 
         <div className={styles.grow} />
 
-        <button className="btn" onClick={() => setShowAnalyzer((v) => !v)}>
+        <button className="btn" onClick={() => { setShowHistory((v) => !v); setShowOptimize(false); setShowAnalyzer(false); }}>
+          <History size={14} strokeWidth={2.2} /> 历史版本
+        </button>
+        <button className="btn" onClick={() => { setShowOptimize((v) => !v); setShowHistory(false); setShowAnalyzer(false); }}>
+          <Wand2 size={14} strokeWidth={2.2} /> 一键优化
+        </button>
+        <button className="btn" onClick={() => setShowImport(true)}>
+          <FileUp size={14} strokeWidth={2.2} /> 导入
+        </button>
+        <button className="btn" onClick={() => { setShowAnalyzer((v) => !v); setShowHistory(false); setShowOptimize(false); }}>
           <Gauge size={14} strokeWidth={2.2} /> 优化分析
         </button>
         <button className="btn" onClick={toggleShare}>
@@ -185,24 +199,73 @@ export function Editor({ initial }: { initial: ResumeDto }) {
           <ResumeForm data={data} onChange={update} />
         </div>
         <div className={styles.previewPane}>
-          <div className={`${styles.previewScroll} ${showAnalyzer ? styles.withPanel : ""}`}>
+          <div className={`${styles.previewScroll} ${analysis ? styles.withPanel : ""}`}>
             <div className={styles.paperWrap}>
               <div className="print-root">
                 <ResumePreview data={data} template={template} theme={theme} printing />
               </div>
             </div>
           </div>
-          {showAnalyzer && (
+          {showAnalyzer && !showHistory && !showOptimize && (
             <aside className={styles.analyzerPane}>
               <AnalyzerPanel data={data} onJump={(target) => document.getElementById(`sec-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+            </aside>
+          )}
+          {showHistory && (
+            <aside className={styles.analyzerPane}>
+              <HistoryPanel
+                resumeId={initial.id}
+                currentData={data}
+                currentTitle={title}
+                onClose={() => setShowHistory(false)}
+                onRestore={(next, tpl, th) => {
+                  setData(next);
+                  setTemplate(tpl as TemplateId);
+                  setTheme(th as ThemeId);
+                  markDirty();
+                  void save(false, "rollback");
+                }}
+              />
+            </aside>
+          )}
+          {showOptimize && (
+            <aside className={styles.analyzerPane}>
+              <OptimizePanel
+                data={data}
+                onClose={() => setShowOptimize(false)}
+                onApply={(next) => {
+                  setData(next);
+                  markDirty();
+                  void save(false, "optimize");
+                  setShowOptimize(false);
+                }}
+              />
             </aside>
           )}
         </div>
       </div>
 
-      {/* 打印专用挂载点（预览已在 print-root 内） */}
+      {showImport && (
+        <ImportDialog
+          onClose={() => setShowImport(false)}
+          onImport={(imported) => {
+            setData((prev) => ({
+              ...prev,
+              ...imported,
+              basics: {
+                ...prev.basics,
+                ...imported.basics,
+                summary: imported.basics.summary || prev.basics.summary,
+              },
+            }));
+            markDirty();
+            toast.ok("已导入到表单，请核对后保存");
+          }}
+        />
+      )}
+
       <span className={styles.printAnchor} hidden>
-        <FileText size={1} />
+        <Gauge size={1} />
       </span>
     </div>
   );
@@ -218,6 +281,3 @@ function SaveIndicator({ state }: { state: "saved" | "dirty" | "saving" | "error
   const { text, cls } = map[state];
   return <span className={`${styles.saveDot} ${cls}`}>{text}</span>;
 }
-
-// 保留 schema 引用用于运行时防御性归一化（服务端返回旧格式时自动补默认字段）
-void resumeDataSchema;

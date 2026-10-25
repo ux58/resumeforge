@@ -14,6 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <FileText size={16} strokeWidth={2.2} />
           ResumeForge
         </a>
+        <nav className={styles.nav} aria-label="主导航">
+          <a href="/dashboard">我的简历</a>
+          <a href="/jobs">职位匹配</a>
+        </nav>
+        <span className={styles.spacer} />
         <span className={styles.user}>{user.username}</span>
         <LogoutButton />
       </header>

@@ -1,0 +1,323 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Briefcase, MapPin, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { apiJson, apiJsonBody } from "@/shared/api-client";
+import { toast } from "@/components/toast";
+import { extractJobFromText, KNOWN_BENEFITS, type JobDto } from "@/features/jobs/schema";
+import { filterJobs, matchJob, gradeOf, type JobFilter, type JobMatch } from "@/features/analysis/match";
+import type { ResumeDto } from "@/features/resumes/service";
+import styles from "./jobs.module.scss";
+
+const GRADE_STYLE: Record<JobMatch["grade"], string> = { S: styles.gradeS, A: styles.gradeA, B: styles.gradeB, C: styles.gradeC };
+const QUICK_BENEFITS = ["双休", "五险一金", "远程办公", "弹性工作", "年终奖"];
+
+export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
+  const [jobs, setJobs] = useState<JobDto[] | null>(null);
+  const [resumeId, setResumeId] = useState(resumes[0]?.id ?? "");
+  const [filters, setFilters] = useState<JobFilter>({ benefits: [], weekendOnly: false, remoteOnly: false });
+  const [city, setCity] = useState("");
+  const [salary, setSalary] = useState<number | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    apiJson<{ items: JobDto[] }>("/api/jobs")
+      .then((r) => setJobs(r.items))
+      .catch(() => setJobs([]));
+  }, []);
+
+  const resume = resumes.find((r) => r.id === resumeId) ?? resumes[0];
+
+  const matches = useMemo(() => {
+    if (!jobs || !resume) return [];
+    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined });
+    return filtered
+      .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
+      .sort((a, b) => b.match.score - a.match.score);
+  }, [jobs, resume, filters, city, salary]);
+
+  const cities = useMemo(() => [...new Set((jobs ?? []).map((j) => j.city).filter(Boolean))], [jobs]);
+
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      const r = await apiJson<{ items: JobDto[] }>("/api/jobs");
+      setJobs(r.items);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function removeJob(id: string) {
+    if (!confirm("删除这个职位？")) return;
+    try {
+      await apiJson(`/api/jobs/${id}`, { method: "DELETE" });
+      setJobs((prev) => (prev ?? []).filter((j) => j.id !== id));
+      toast.ok("已删除");
+    } catch (err) {
+      toast.err(err instanceof Error ? err.message : "删除失败");
+    }
+  }
+
+  if (!resumes.length) {
+    return (
+      <div className={`${styles.empty} card`}>
+        <Briefcase size={30} strokeWidth={1.6} />
+        <p>先创建一份简历，再回到这里做职位匹配分析。</p>
+        <Link href="/dashboard" className="btn primary">去创建简历</Link>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className={styles.head}>
+        <div>
+          <h1>职位匹配中心</h1>
+          <p className={styles.sub}>粘贴任意招聘平台的 JD 即可入库分析；按匹配度分级（S/A/B/C），福利标签一目了然</p>
+        </div>
+        <div className={styles.headOps}>
+          <select
+            className={styles.resumeSelect}
+            value={resumeId}
+            onChange={(e) => setResumeId(e.target.value)}
+            aria-label="选择用于匹配的简历"
+          >
+            {resumes.map((r) => (
+              <option key={r.id} value={r.id}>{r.title}（{r.data.basics.name || "未命名"}）</option>
+            ))}
+          </select>
+          <button className="btn" onClick={refresh} disabled={refreshing}>
+            <RefreshCw size={14} className={refreshing ? styles.spin : ""} /> 刷新
+          </button>
+          <button className="btn primary" onClick={() => setShowAdd(true)}>
+            <Plus size={15} strokeWidth={2.4} /> 添加职位
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.filterBar}>
+        <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="城市筛选">
+          <option value="">全部城市</option>
+          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select
+          value={salary ?? ""}
+          onChange={(e) => setSalary(e.target.value ? Number(e.target.value) : null)}
+          aria-label="月薪下限筛选"
+        >
+          <option value="">月薪不限</option>
+          {[15, 20, 25, 30, 40, 50].map((k) => <option key={k} value={k}>{k}K 以上</option>)}
+        </select>
+        {QUICK_BENEFITS.map((b) => (
+          <button
+            key={b}
+            className={`${styles.filterTag} ${filters.benefits?.includes(b) ? styles.filterOn : ""}`}
+            onClick={() =>
+              setFilters((f) => {
+                const cur = f.benefits ?? [];
+                return { ...f, benefits: cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b] };
+              })
+            }
+          >
+            {b}
+          </button>
+        ))}
+        <button
+          className={`${styles.filterTag} ${filters.weekendOnly ? styles.filterOn : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, weekendOnly: !f.weekendOnly }))}
+        >
+          仅看双休
+        </button>
+        <button
+          className={`${styles.filterTag} ${filters.remoteOnly ? styles.filterOn : ""}`}
+          onClick={() => setFilters((f) => ({ ...f, remoteOnly: !f.remoteOnly }))}
+        >
+          仅看远程
+        </button>
+        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || salary != null) ? (
+          <button
+            className={styles.clearBtn}
+            onClick={() => { setFilters({ benefits: [] }); setCity(""); setSalary(null); }}
+          >
+            <X size={13} /> 清除筛选
+          </button>
+        ) : null}
+      </div>
+
+      {jobs === null ? (
+        <p className={styles.loading}>加载中…</p>
+      ) : matches.length === 0 ? (
+        <div className={`${styles.empty} card`}>
+          <p>没有符合条件的职位。调整筛选，或点「添加职位」粘贴新的 JD。</p>
+        </div>
+      ) : (
+        <div className={styles.list}>
+          {matches.map(({ job, match }) => (
+            <JobCard key={job.id} job={job} match={match} onDelete={removeJob} resumeId={resumeId} />
+          ))}
+        </div>
+      )}
+
+      {showAdd && (
+        <AddJobDialog
+          onClose={() => setShowAdd(false)}
+          onAdded={(j) => {
+            setJobs((prev) => [j, ...(prev ?? [])]);
+            setShowAdd(false);
+            toast.ok("职位已入库");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMatch; onDelete: (id: string) => void; resumeId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <article className={`${styles.jobCard} card`}>
+      <div className={styles.jobHead}>
+        <span className={`${styles.grade} ${GRADE_STYLE[match.grade]}`}>{match.grade}</span>
+        <div className={styles.jobTitle}>
+          <strong>{job.role || "未命名职位"}</strong>
+          <span className={styles.company}>{job.company}</span>
+        </div>
+        <div className={styles.jobMeta}>
+          <span className={styles.salary}>{job.salaryText || "薪资面议"}</span>
+          <span><MapPin size={12} /> {job.city || "不限"}</span>
+          <span className={styles.matchScore}>{match.score} 分</span>
+        </div>
+      </div>
+
+      <div className={styles.tagRow}>
+        {job.benefits.map((b) => (
+          <span key={b} className={styles.benefitTag}>{b}</span>
+        ))}
+        {job.experienceReq && <span className={styles.reqTag}>{job.experienceReq}</span>}
+        {job.educationReq && <span className={styles.reqTag}>{job.educationReq}</span>}
+      </div>
+
+      <div className={styles.gradeLine}>
+        <b>{match.gradeLabel}</b>
+        <span>关键词命中 {match.matchedKeywords.length} · 缺失 {match.missingKeywords.length}</span>
+      </div>
+
+      <div className={styles.jobOps}>
+        <button className="btn" onClick={() => setOpen((v) => !v)}>{open ? "收起详情" : "匹配详情与建议"}</button>
+        <Link className="btn" href={`/editor/${resumeId}`}>去优化简历</Link>
+        <button className="btn danger" onClick={() => onDelete(job.id)} aria-label={`删除 ${job.company} ${job.role}`}><Trash2 size={13} /></button>
+      </div>
+
+      {open && (
+        <div className={styles.detail}>
+          {match.guidance.length > 0 && (
+            <ul className={styles.guidance}>
+              {match.guidance.map((g, i) => <li key={i}>{g}</li>)}
+            </ul>
+          )}
+          {match.missingKeywords.length > 0 && (
+            <div className={styles.kwBlock}>
+              <span className={styles.kwLabel}>缺失：</span>
+              {match.missingKeywords.map((k) => <span key={k} className={styles.kwMiss}>{k}</span>)}
+            </div>
+          )}
+          {match.matchedKeywords.length > 0 && (
+            <div className={styles.kwBlock}>
+              <span className={styles.kwLabel}>已覆盖：</span>
+              {match.matchedKeywords.map((k) => <span key={k} className={styles.kwHit}>{k}</span>)}
+            </div>
+          )}
+          <details className={styles.jdDetails}>
+            <summary>查看完整 JD</summary>
+            <pre className={styles.jdText}>{job.jdText}</pre>
+          </details>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: JobDto) => void }) {
+  const [raw, setRaw] = useState("");
+  const [form, setForm] = useState<ReturnType<typeof extractJobFromText> | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  function doExtract() {
+    if (raw.trim().length < 30) {
+      toast.err("JD 内容太短");
+      return;
+    }
+    const e = extractJobFromText(raw);
+    
+    setForm({ ...e });
+    toast.ok("已识别薪资/城市/福利，请核对后保存");
+  }
+
+  async function doSave() {
+    if (!form) return;
+    setBusy(true);
+    try {
+      const j = await apiJsonBody<JobDto>("POST", "/api/jobs", { ...form, source: "extract" });
+      onAdded(j);
+    } catch (err) {
+      toast.err(err instanceof Error ? err.message : "保存失败");
+      setBusy(false);
+    }
+  }
+
+  const set = (k: keyof ReturnType<typeof extractJobFromText>) => (v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
+
+  return (
+    <div className={styles.mask} onClick={onClose}>
+      <div className={`${styles.dialog} card`} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.dialogHead}>
+          <h3><Briefcase size={15} /> 添加职位</h3>
+          <button className="btn" onClick={onClose} aria-label="关闭"><X size={15} /></button>
+        </div>
+        <p className={styles.hint}>把 BOSS 直聘 / 拉勾 / 猎聘等平台的职位描述整段粘贴进来，系统自动识别薪资、城市、福利标签与经验要求。</p>
+        <textarea
+          className={styles.importArea}
+          rows={9}
+          value={raw}
+          onChange={(e) => setRaw(e.target.value)}
+          placeholder={"产品经理（数据方向）\n北京 · 25-40K·15薪\n五险一金 双休 弹性工作 年终奖\n岗位职责：负责数据平台规划…\n任职要求：3-5年 B 端产品经验，熟悉 SQL…"}
+        />
+        {!form ? (
+          <button className="btn primary" onClick={doExtract}>智能识别</button>
+        ) : (
+          <>
+            <div className={styles.grid2}>
+              <div className="field"><label>公司</label><input value={form.company} onChange={(e) => set("company")(e.target.value)} /></div>
+              <div className="field"><label>职位</label><input value={form.role} onChange={(e) => set("role")(e.target.value)} /></div>
+              <div className="field"><label>城市</label><input value={form.city} onChange={(e) => set("city")(e.target.value)} /></div>
+              <div className="field"><label>薪资</label><input value={form.salaryText} onChange={(e) => set("salaryText")(e.target.value)} /></div>
+              <div className="field"><label>经验要求</label><input value={form.experienceReq} onChange={(e) => set("experienceReq")(e.target.value)} /></div>
+              <div className="field"><label>学历要求</label><input value={form.educationReq} onChange={(e) => set("educationReq")(e.target.value)} /></div>
+            </div>
+            <div className={styles.tagPick}>
+              {KNOWN_BENEFITS.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  className={`${styles.filterTag} ${form.benefits.includes(b) ? styles.filterOn : ""}`}
+                  onClick={() => setForm((f) => (f ? { ...f, benefits: f.benefits.includes(b) ? f.benefits.filter((x) => x !== b) : [...f.benefits, b] } : f))}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+            <div className={styles.importActions}>
+              <button className="btn" onClick={() => setForm(null)}>重新识别</button>
+              <button className="btn primary" onClick={doSave} disabled={busy}>{busy ? "保存中…" : "保存到职位库"}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+void gradeOf;

@@ -1,0 +1,128 @@
+import { and, desc, eq } from "drizzle-orm";
+import { getDb, schema } from "@/server/db";
+import type { JobCreateInput, JobDto } from "./schema";
+
+function toDto(row: typeof schema.jobs.$inferSelect): JobDto {
+  return {
+    id: row.id,
+    company: row.company,
+    role: row.role,
+    city: row.city,
+    salaryText: row.salaryText,
+    salaryMinK: row.salaryMinK,
+    salaryMaxK: row.salaryMaxK,
+    benefits: row.benefits ?? [],
+    experienceReq: row.experienceReq,
+    educationReq: row.educationReq,
+    jdText: row.jdText,
+    source: row.source,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function listJobs(userId: string): Promise<JobDto[]> {
+  const rows = await getDb()
+    .select()
+    .from(schema.jobs)
+    .where(eq(schema.jobs.userId, userId))
+    .orderBy(desc(schema.jobs.createdAt));
+  return rows.map(toDto);
+}
+
+export async function createJob(userId: string, input: JobCreateInput): Promise<JobDto> {
+  const [row] = await getDb()
+    .insert(schema.jobs)
+    .values({
+      userId,
+      company: input.company,
+      role: input.role,
+      city: input.city,
+      salaryText: input.salaryText,
+      salaryMinK: input.salaryMinK ?? null,
+      salaryMaxK: input.salaryMaxK ?? null,
+      benefits: input.benefits,
+      experienceReq: input.experienceReq,
+      educationReq: input.educationReq,
+      jdText: input.jdText,
+      source: input.source,
+    })
+    .returning();
+  return toDto(row);
+}
+
+export async function deleteJob(userId: string, id: string): Promise<void> {
+  const result = await getDb()
+    .delete(schema.jobs)
+    .where(and(eq(schema.jobs.id, id), eq(schema.jobs.userId, userId)))
+    .returning({ id: schema.jobs.id });
+  if (!result.length) throw new Error("职位不存在");
+}
+
+/** 首次进入职位中心时预置一组国内典型职位（含完整福利标签），保证开箱即用 */
+export async function ensureSampleJobs(userId: string): Promise<void> {
+  const existing = await getDb().select({ id: schema.jobs.id }).from(schema.jobs).where(eq(schema.jobs.userId, userId)).limit(1);
+  if (existing.length) return;
+
+  const samples: JobCreateInput[] = [
+    {
+      company: "字节跳动", role: "后端开发工程师（支付方向）", city: "北京", salaryText: "30-50K·15薪", salaryMinK: 30, salaryMaxK: 50,
+      benefits: ["五险一金", "免费班车", "股票期权", "弹性工作", "餐补", "年终奖"],
+      experienceReq: "3-5年", educationReq: "本科",
+      jdText: "岗位职责：负责支付与清结算核心系统的架构设计与开发，参与高并发资金链路建设。任职要求：精通 Go 或 Java，熟悉分布式事务与消息队列，有大型支付平台经验者优先；本科及以上学历，3-5年相关经验。福利：五险一金、免费班车、股票期权、弹性工作、免费三餐、年终奖。",
+      source: "sample",
+    },
+    {
+      company: "阿里云", role: "云原生研发工程师", city: "杭州", salaryText: "28-45K·16薪", salaryMinK: 28, salaryMaxK: 45,
+      benefits: ["六险一金", "股票期权", "年终奖", "定期体检", "带薪年假"],
+      experienceReq: "3年以上", educationReq: "本科",
+      jdText: "岗位职责：负责容器服务与 Serverless 产品研发，参与 Kubernetes 生态建设。任职要求：精通 Go，深入理解 Kubernetes 调度与网络模型，熟悉 Prometheus 可观测性体系；本科及以上学历，3年以上经验。福利：六险一金、股票期权、年终奖、定期体检、带薪年假。",
+      source: "sample",
+    },
+    {
+      company: "腾讯", role: "前端开发工程师（高级）", city: "深圳", salaryText: "25-40K·16薪", salaryMinK: 25, salaryMaxK: 40,
+      benefits: ["五险一金", "弹性工作", "免费班车", "餐补", "年终奖", "带薪年假"],
+      experienceReq: "3-5年", educationReq: "本科",
+      jdText: "岗位职责：负责大型 ToC 产品前端架构与性能优化，建设跨端研发体系。任职要求：精通 React/TypeScript，有微前端与工程化实践经验，关注体验与性能度量；本科及以上学历。福利：五险一金、弹性工作、免费班车、年终奖。",
+      source: "sample",
+    },
+    {
+      company: "美团", role: "数据产品经理", city: "北京", salaryText: "25-40K·15.5薪", salaryMinK: 25, salaryMaxK: 40,
+      benefits: ["五险一金", "弹性工作", "免费班车", "餐补", "年终奖"],
+      experienceReq: "3-5年", educationReq: "本科",
+      jdText: "岗位职责：负责 B 端数据产品规划与迭代，搭建经营分析看板与指标体系。任职要求：3-5年 B 端产品经验，熟练 SQL 与数据可视化，有 BI 产品经验优先。福利：五险一金、弹性工作、免费班车、年终奖。",
+      source: "sample",
+    },
+    {
+      company: "远程优先科技公司", role: "全栈工程师（远程）", city: "远程", salaryText: "20-35K", salaryMinK: 20, salaryMaxK: 35,
+      benefits: ["远程办公", "弹性工作", "六险一金", "带薪年假", "年度体检"],
+      experienceReq: "3年以上", educationReq: "不限",
+      jdText: "岗位职责：参与 SaaS 产品全栈开发（Next.js + Node.js + Postgres），异步协作，结果导向。任职要求：3年以上全栈经验，熟悉 React 与 Node.js，英语读写流畅，自驱力强。福利： fully remote 远程办公、弹性工作、六险一金、带薪年假。",
+      source: "sample",
+    },
+    {
+      company: "小红书", role: "社区产品经理（增长方向）", city: "上海", salaryText: "22-38K·14薪", salaryMinK: 22, salaryMaxK: 38,
+      benefits: ["五险一金", "弹性工作", "餐补", "年终奖", "定期体检"],
+      experienceReq: "1-3年", educationReq: "本科",
+      jdText: "岗位职责：负责社区增长玩法设计与数据分析闭环。任职要求：1-3年增长产品经验，数据敏感，熟悉 A/B 实验体系。福利：五险一金、弹性工作、下午茶、年终奖。",
+      source: "sample",
+    },
+    {
+      company: "网易有道", role: "AI 应用工程师", city: "杭州", salaryText: "25-45K·14薪", salaryMinK: 25, salaryMaxK: 45,
+      benefits: ["五险一金", "弹性工作", "年终奖", "定期体检", "住房补贴"],
+      experienceReq: "2年以上", educationReq: "本科",
+      jdText: "岗位职责：基于 LLM 构建教育场景智能应用（RAG/Agent）。任职要求：2年以上后端经验，熟悉 Python 或 Go，了解 Prompt 工程与向量检索。福利：五险一金、弹性工作、住房补贴、年终奖。",
+      source: "sample",
+    },
+    {
+      company: "某跨境电商独角兽", role: "Java 高级开发", city: "深圳", salaryText: "22-35K·14薪", salaryMinK: 22, salaryMaxK: 35,
+      benefits: ["五险一金", "大小周", "年终奖", "交通补贴"],
+      experienceReq: "3-5年", educationReq: "大专",
+      jdText: "岗位职责：负责订单中台与履约系统开发。任职要求：Java 基础扎实，熟悉 Spring Cloud 与 MySQL 调优，大专及以上学历，3-5年经验。福利：五险一金、大小周、年终奖、交通补贴。",
+      source: "sample",
+    },
+  ];
+
+  for (const s of samples) {
+    await createJob(userId, s);
+  }
+}

@@ -25,6 +25,22 @@
   font-size: 14px;
 }
 
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 14px;
+
+  a {
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    &:hover { color: var(--text); background: var(--bg-hover); }
+  }
+}
+
+.spacer { flex: 1; }
+
 .user {
   margin-left: auto;
   color: var(--text-dim);

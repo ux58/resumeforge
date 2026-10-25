@@ -16,11 +16,15 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   }
 }
 
+const patchWithSource = resumeUpdateSchema.extend({
+  source: z.enum(["edit", "autosave", "optimize", "rollback"]).optional(),
+});
+
 export async function PATCH(req: NextRequest, ctx: Ctx) {
   try {
     const user = await requireUser();
-    const patch = resumeUpdateSchema.parse(await req.json());
-    return NextResponse.json(await updateResume(user.id, (await ctx.params).id, patch));
+    const { source, ...patch } = patchWithSource.parse(await req.json());
+    return NextResponse.json(await updateResume(user.id, (await ctx.params).id, patch, source ?? "edit"));
   } catch (err) {
     return jsonError(err);
   }
