@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Briefcase, MapPin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { apiJson, apiJsonBody } from "@/shared/api-client";
 import { toast } from "@/components/toast";
+import { Select } from "@/components/select";
 import { extractJobFromText, KNOWN_BENEFITS, type JobDto } from "@/features/jobs/schema";
 import { filterJobs, matchJob, gradeOf, type JobFilter, type JobMatch } from "@/features/analysis/match";
 import type { ResumeDto } from "@/features/resumes/service";
@@ -79,16 +80,13 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           <p className={styles.sub}>粘贴任意招聘平台的 JD 即可入库分析；按匹配度分级（S/A/B/C），福利标签一目了然</p>
         </div>
         <div className={styles.headOps}>
-          <select
-            className={styles.resumeSelect}
+          <Select
             value={resumeId}
-            onChange={(e) => setResumeId(e.target.value)}
-            aria-label="选择用于匹配的简历"
-          >
-            {resumes.map((r) => (
-              <option key={r.id} value={r.id}>{r.title}（{r.data.basics.name || "未命名"}）</option>
-            ))}
-          </select>
+            onChange={setResumeId}
+            ariaLabel="选择用于匹配的简历"
+            className={styles.resumeSelect}
+            options={resumes.map((r) => ({ value: r.id, label: r.title + "（" + (r.data.basics.name || "未命名") + "）" }))}
+          />
           <button className="btn" onClick={refresh} disabled={refreshing}>
             <RefreshCw size={14} className={refreshing ? styles.spin : ""} /> 刷新
           </button>
@@ -99,18 +97,18 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
       </div>
 
       <div className={styles.filterBar}>
-        <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="城市筛选">
-          <option value="">全部城市</option>
-          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select
-          value={salary ?? ""}
-          onChange={(e) => setSalary(e.target.value ? Number(e.target.value) : null)}
-          aria-label="月薪下限筛选"
-        >
-          <option value="">月薪不限</option>
-          {[15, 20, 25, 30, 40, 50].map((k) => <option key={k} value={k}>{k}K 以上</option>)}
-        </select>
+        <Select
+          value={city}
+          onChange={setCity}
+          ariaLabel="城市筛选"
+          options={[{ value: "", label: "全部城市" }, ...cities.map((c) => ({ value: c, label: c }))]}
+        />
+        <Select
+          value={salary == null ? "" : String(salary)}
+          onChange={(v) => setSalary(v ? Number(v) : null)}
+          ariaLabel="月薪下限筛选"
+          options={[{ value: "", label: "月薪不限" }, ...[15, 20, 25, 30, 40, 50].map((k) => ({ value: String(k), label: k + "K 以上" }))]}
+        />
         {QUICK_BENEFITS.map((b) => (
           <button
             key={b}
