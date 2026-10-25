@@ -8,6 +8,7 @@ import { toast } from "@/components/toast";
 import type { ResumeData, TemplateId, ThemeId } from "@/features/resumes/schema";
 import type { ResumeDto } from "@/features/resumes/service";
 import { ResumePreview } from "@/components/resume-preview";
+import { ScrollArea } from "@/components/scroll-area";
 import { ResumeForm } from "./resume-form";
 import { AnalyzerPanel } from "./analyzer-panel";
 import { HistoryPanel } from "./history-panel";
@@ -195,24 +196,24 @@ export function Editor({ initial }: { initial: ResumeDto }) {
       </div>
 
       <div className={styles.workarea}>
-        <div className={styles.formPane}>
+        <ScrollArea className={styles.formPane} ariaLabel="简历表单">
           <ResumeForm data={data} onChange={update} />
-        </div>
+        </ScrollArea>
         <div className={styles.previewPane}>
-          <div className={`${styles.previewScroll} ${analysis ? styles.withPanel : ""}`}>
+          <ScrollArea className={`${styles.previewScroll} ${analysis ? styles.withPanel : ""}`} ariaLabel="简历预览">
             <div className={styles.paperWrap}>
               <div className="print-root">
                 <ResumePreview data={data} template={template} theme={theme} printing />
               </div>
             </div>
-          </div>
+          </ScrollArea>
           {showAnalyzer && !showHistory && !showOptimize && (
             <aside className={styles.analyzerPane}>
               <AnalyzerPanel data={data} onJump={(target) => document.getElementById(`sec-${target}`)?.scrollIntoView({ behavior: "smooth", block: "start" })} />
             </aside>
           )}
           {showHistory && (
-            <aside className={styles.analyzerPane}>
+            <ScrollArea className={styles.analyzerPane} ariaLabel="历史版本">
               <HistoryPanel
                 resumeId={initial.id}
                 currentData={data}
@@ -226,10 +227,10 @@ export function Editor({ initial }: { initial: ResumeDto }) {
                   void save(false, "rollback");
                 }}
               />
-            </aside>
+            </ScrollArea>
           )}
           {showOptimize && (
-            <aside className={styles.analyzerPane}>
+            <ScrollArea className={styles.analyzerPane} ariaLabel="一键优化">
               <OptimizePanel
                 data={data}
                 onClose={() => setShowOptimize(false)}
@@ -240,7 +241,7 @@ export function Editor({ initial }: { initial: ResumeDto }) {
                   setShowOptimize(false);
                 }}
               />
-            </aside>
+            </ScrollArea>
           )}
         </div>
       </div>

@@ -72,7 +72,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
   }
 
   return (
-    <div>
+    <div className="page-container">
       <div className={styles.head}>
         <div>
           <h1>职位匹配中心</h1>
@@ -183,7 +183,7 @@ function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMa
         <span className={`${styles.grade} ${GRADE_STYLE[match.grade]}`}>{match.grade}</span>
         <div className={styles.jobTitle}>
           <strong>{job.role || "未命名职位"}</strong>
-          <span className={styles.company}>{job.company}</span>
+          <span className={styles.company}>{job.company}<span className={styles.sourceTag}>{job.source === "sample" ? "示例库" : "自建"}</span></span>
         </div>
         <div className={styles.jobMeta}>
           <span className={styles.salary}>{job.salaryText || "薪资面议"}</span>

@@ -25,6 +25,33 @@
   --font: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-raised: rgba(16, 18, 22, 0.03);
+  --bg-hover: rgba(16, 18, 22, 0.06);
+  --border: rgba(16, 18, 22, 0.1);
+  --border-strong: rgba(16, 18, 22, 0.22);
+  --text: #1c1f26;
+  --text-dim: #565d68;
+  --text-faint: #828a96;
+  --accent: #2f6fed;
+  --accent-hover: #245ed6;
+  --accent-soft: rgba(47, 111, 237, 0.1);
+  --ok: #188a52;
+  --warn: #a06a14;
+  --danger: #cc3d55;
+  --shadow-sm: 0 1px 3px rgba(20, 24, 34, 0.08);
+}
+
+/* 主题切换瞬间禁用过渡，避免大面积重绘闪烁 */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -72,6 +99,68 @@ input, select, textarea {
 textarea { resize: vertical; min-height: 64px; }
 
 button { font: inherit; cursor: pointer; }
+
+/* ---------- 全站滚动条：原生滚动条统一细样式（配合 ScrollArea 组件的悬浮条不占位） ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  &:hover { background-color: var(--text-faint); }
+}
+
+::-webkit-scrollbar-track { background: transparent; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+/* ---------- ScrollArea：悬浮滚动条（不占布局空间） ---------- */
+.scroll-area {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.scroll-area-content {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none; // 隐藏原生条，改用悬浮拇指
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.scroll-area-track {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+  pointer-events: none;
+}
+
+.scroll-area:hover .scroll-area-track,
+.scroll-area.scrolling .scroll-area-track {
+  opacity: 1;
+}
+
+.scroll-area-thumb {
+  position: absolute;
+  right: 2px;
+  width: 5px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  pointer-events: auto;
+  cursor: grab;
+  &:hover { background: var(--text-faint); }
+  &:active { cursor: grabbing; background: var(--text-faint); }
+}
 
 .btn {
   display: inline-flex;
@@ -139,4 +228,11 @@ button { font: inherit; cursor: pointer; }
     transform: none !important;
   }
   .no-print { display: none !important; }
+}
+
+/* 页面统一容器（仪表盘/职位页等常规页面） */
+.page-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 26px 60px;
 }

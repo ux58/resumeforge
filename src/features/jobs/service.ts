@@ -120,6 +120,48 @@ export async function ensureSampleJobs(userId: string): Promise<void> {
       jdText: "岗位职责：负责订单中台与履约系统开发。任职要求：Java 基础扎实，熟悉 Spring Cloud 与 MySQL 调优，大专及以上学历，3-5年经验。福利：五险一金、大小周、年终奖、交通补贴。",
       source: "sample",
     },
+    {
+      company: "拼多多", role: "服务端开发工程师", city: "上海", salaryText: "35-60K·16薪", salaryMinK: 35, salaryMaxK: 60,
+      benefits: ["五险一金", "加班补贴", "年终奖", "餐补"],
+      experienceReq: "3-5年", educationReq: "本科",
+      jdText: "岗位职责：负责电商交易链路服务端研发，保障大促高并发场景稳定性。任职要求：精通 Java 或 Go，熟悉高并发、分布式缓存与消息队列，有电商经验优先。福利：五险一金、加班补贴、年终奖、免费餐补。",
+      source: "sample",
+    },
+    {
+      company: "百度", role: "前端研发工程师", city: "北京", salaryText: "25-40K·14.5薪", salaryMinK: 25, salaryMaxK: 40,
+      benefits: ["五险一金", "免费班车", "弹性工作", "年终奖", "定期体检"],
+      experienceReq: "3年以上", educationReq: "本科",
+      jdText: "岗位职责：负责搜索与智能云前端技术体系建设，推进组件化与性能优化。任职要求：精通 React 或 Vue，熟悉构建工具链与微前端，有大型项目性能优化经验。福利：五险一金、免费班车、弹性工作、年终奖。",
+      source: "sample",
+    },
+    {
+      company: "华为", role: "云计算软件工程师", city: "深圳", salaryText: "28-45K·14薪", salaryMinK: 28, salaryMaxK: 45,
+      benefits: ["五险一金", "住房补贴", "年终奖", "定期体检", "带薪年假"],
+      experienceReq: "3年以上", educationReq: "硕士",
+      jdText: "岗位职责：负责云服务控制面与调度系统开发。任职要求：精通 Go/Java，熟悉分布式系统设计，有云平台研发经验优先；硕士及以上学历。福利：五险一金、住房补贴、年终奖、定期体检。",
+      source: "sample",
+    },
+    {
+      company: "携程", role: "高级测试开发工程师", city: "上海", salaryText: "22-35K·13薪", salaryMinK: 22, salaryMaxK: 35,
+      benefits: ["五险一金", "双休", "弹性工作", "带薪年假", "年度旅游"],
+      experienceReq: "3-5年", educationReq: "本科",
+      jdText: "岗位职责：建设自动化测试平台与质量度量体系。任职要求：熟悉 Python/Java，有 Selenium 或流量回放经验，双休不加班。福利：五险一金、双休、弹性工作、带薪年假、年度旅游。",
+      source: "sample",
+    },
+    {
+      company: "快手", role: "高级产品经理（直播）", city: "北京", salaryText: "30-50K·15薪", salaryMinK: 30, salaryMaxK: 50,
+      benefits: ["五险一金", "免费班车", "餐补", "年终奖", "股票期权"],
+      experienceReq: "5年以上", educationReq: "本科",
+      jdText: "岗位职责：负责直播生态产品策略与商业化增长。任职要求：5年以上直播/社区产品经验，数据驱动，有大型活动操盘案例。福利：五险一金、免费班车、年终奖、股票期权。",
+      source: "sample",
+    },
+    {
+      company: "米哈游", role: "游戏客户端开发（Unity）", city: "上海", salaryText: "25-45K·14薪", salaryMinK: 25, salaryMaxK: 45,
+      benefits: ["六险一金", "弹性工作", "餐补", "年终奖", "带薪年假"],
+      experienceReq: "3年以上", educationReq: "本科",
+      jdText: "岗位职责：负责开放世界玩法系统与工具链开发。任职要求：精通 C# 与 Unity，熟悉性能优化与资源管理，热爱游戏。福利：六险一金、弹性工作、包三餐、年终奖。",
+      source: "sample",
+    },
   ];
 
   for (const s of samples) {

@@ -330,3 +330,15 @@
   .grid2 { grid-template-columns: 1fr; }
   .jobMeta { flex-wrap: wrap; }
 }
+
+.sourceTag {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10.5px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  vertical-align: 1px;
+}

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth";
 import { FileText } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { ScrollArea } from "@/components/scroll-area";
 import { LogoutButton } from "./logout-button";
 import styles from "./app.module.scss";
 
@@ -19,10 +21,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <a href="/jobs">职位匹配</a>
         </nav>
         <span className={styles.spacer} />
+        <ThemeToggle />
         <span className={styles.user}>{user.username}</span>
         <LogoutButton />
       </header>
-      <main className={styles.main}>{children}</main>
+      <ScrollArea className={styles.main} ariaLabel="页面主内容">
+        {children}
+      </ScrollArea>
     </div>
   );
 }

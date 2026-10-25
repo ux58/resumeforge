@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth";
 import { LoginForm } from "./form";
+import { ThemeToggle } from "@/components/theme-toggle";
 import styles from "./auth.module.scss";
 
 export default async function LoginPage() {
@@ -8,6 +9,7 @@ export default async function LoginPage() {
   if (user) redirect("/dashboard");
   return (
     <main className={styles.wrap}>
+      <div className={styles.themeCorner}><ThemeToggle /></div>
       <div className={`${styles.card} card`}>
         <div className={styles.badge}>
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

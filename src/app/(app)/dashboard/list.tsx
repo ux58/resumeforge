@@ -73,7 +73,7 @@ export function DashboardList({ initial }: { initial: ResumeDto[] }) {
   }
 
   return (
-    <div>
+    <div className="page-container">
       <div className={styles.head}>
         <h1>我的简历 <span className={styles.count}>{items.length}</span></h1>
         <button className="btn primary" onClick={create} disabled={creating}>
