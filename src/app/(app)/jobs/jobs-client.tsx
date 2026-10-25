@@ -2,19 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Briefcase, MapPin, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Briefcase, ExternalLink, MapPin, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { apiJson, apiJsonBody } from "@/shared/api-client";
 import { toast } from "@/components/toast";
 import { Select } from "@/components/select";
 import { extractJobFromText, KNOWN_BENEFITS, type JobDto } from "@/features/jobs/schema";
 import type { JobCreateInput } from "@/features/jobs/schema";
-import { filterJobs, matchJob, gradeOf, type JobFilter, type JobMatch } from "@/features/analysis/match";
+import type { ExternalJob } from "@/features/jobs/external";
+import { filterJobs, matchJob, type JobFilter, type JobMatch } from "@/features/analysis/match";
 import type { ResumeDto } from "@/features/resumes/service";
 import { CHANNELS, CITIES } from "@/shared/cities";
 import styles from "./jobs.module.scss";
 
 const GRADE_STYLE: Record<JobMatch["grade"], string> = { S: styles.gradeS, A: styles.gradeA, B: styles.gradeB, C: styles.gradeC };
 const QUICK_BENEFITS = ["双休", "五险一金", "远程办公", "弹性工作", "年终奖"];
+
+type SourceTab = "library" | "external";
 
 export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
   const [jobs, setJobs] = useState<JobDto[] | null>(null);
@@ -24,6 +27,10 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
   const [channel, setChannel] = useState("");
   const [salary, setSalary] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [sourceTab, setSourceTab] = useState<SourceTab>("library");
+  const [external, setExternal] = useState<ExternalJob[] | null>(null);
+  const [extLoading, setExtLoading] = useState(false);
+  const [extError, setExtError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -34,21 +41,37 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
 
   const resume = resumes.find((r) => r.id === resumeId) ?? resumes[0];
 
-  const matches = useMemo(() => {
-    if (!jobs || !resume) return [];
-    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined }).filter((j) => (channel ? j.channel === channel : true));
-    return filtered
-      .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
-      .sort((a, b) => b.match.score - a.match.score);
-  }, [jobs, resume, filters, city, channel, salary]);
+  async function loadExternal() {
+    if (external !== null || extLoading) return;
+    setExtLoading(true);
+    try {
+      const r = await apiJson<{ items: ExternalJob[] }>("/api/jobs/external");
+      setExternal(r.items);
+    } catch {
+      setExtError(true);
+      setExternal([]);
+    } finally {
+      setExtLoading(false);
+    }
+  }
 
-  const cities = useMemo(() => [...CITIES], []);
+  useEffect(() => {
+    if (sourceTab !== "external") return;
+    const id = requestAnimationFrame(() => void loadExternal());
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceTab]);
 
   async function refresh() {
     setRefreshing(true);
     try {
-      const r = await apiJson<{ items: JobDto[] }>("/api/jobs");
-      setJobs(r.items);
+      if (sourceTab === "external") {
+        const r = await apiJson<{ items: ExternalJob[] }>("/api/jobs/external");
+        setExternal(r.items);
+      } else {
+        const r = await apiJson<{ items: JobDto[] }>("/api/jobs");
+        setJobs(r.items);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -65,9 +88,26 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
     }
   }
 
+  const matches = useMemo(() => {
+    if (!resume) return [];
+    if (sourceTab === "external") {
+      if (!external) return [];
+      return external
+        .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
+        .sort((a, b) => b.match.score - a.match.score);
+    }
+    if (!jobs) return [];
+    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined }).filter((j) => (channel ? j.channel === channel : true));
+    return filtered
+      .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
+      .sort((a, b) => b.match.score - a.match.score);
+  }, [sourceTab, jobs, external, resume, filters, city, channel, salary]);
+
+  const cities = useMemo(() => [...CITIES], []);
+
   if (!resumes.length) {
     return (
-      <div className={`${styles.empty} card`}>
+      <div className={`${styles.empty} card page-container`}>
         <Briefcase size={30} strokeWidth={1.6} />
         <p>先创建一份简历，再回到这里做职位匹配分析。</p>
         <Link href="/dashboard" className="btn primary">去创建简历</Link>
@@ -80,7 +120,11 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
       <div className={styles.head}>
         <div>
           <h1>职位匹配中心</h1>
-          <p className={styles.sub}>粘贴任意招聘平台的 JD 即可入库分析；按匹配度分级（S/A/B/C），福利标签一目了然</p>
+          <p className={styles.sub}>
+            {sourceTab === "library"
+              ? "粘贴任意招聘平台的 JD 即可入库分析；按匹配度分级（S/A/B/C），福利标签一目了然"
+              : "真实在招岗位——RemoteOK / Arbeitnow 官方开放接口实时拉取（国际与远程职位为主），30 分钟缓存"}
+          </p>
         </div>
         <div className={styles.headOps}>
           <Select
@@ -93,10 +137,21 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           <button className="btn" onClick={refresh} disabled={refreshing}>
             <RefreshCw size={14} className={refreshing ? styles.spin : ""} /> 刷新
           </button>
-          <button className="btn primary" onClick={() => setShowAdd(true)}>
-            <Plus size={15} strokeWidth={2.4} /> 添加职位
-          </button>
+          {sourceTab === "library" && (
+            <button className="btn primary" onClick={() => setShowAdd(true)}>
+              <Plus size={15} strokeWidth={2.4} /> 添加职位
+            </button>
+          )}
         </div>
+      </div>
+
+      <div className={styles.sourceTabs} role="tablist">
+        <button role="tab" aria-selected={sourceTab === "library"} className={`${styles.tabBtn} ${sourceTab === "library" ? styles.tabOn : ""}`} onClick={() => setSourceTab("library")}>
+          职位库（自建/导入）
+        </button>
+        <button role="tab" aria-selected={sourceTab === "external"} className={`${styles.tabBtn} ${sourceTab === "external" ? styles.tabOn : ""}`} onClick={() => setSourceTab("external")}>
+          真实数据源（国际·远程）
+        </button>
       </div>
 
       <div className={styles.filterBar}>
@@ -106,12 +161,14 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           ariaLabel="城市筛选"
           options={[{ value: "", label: "全部城市" }, ...cities.map((c) => ({ value: c, label: c }))]}
         />
-        <Select
-          value={channel}
-          onChange={setChannel}
-          ariaLabel="渠道筛选"
-          options={[{ value: "", label: "全部渠道" }, ...CHANNELS.map((c) => ({ value: c, label: c }))]}
-        />
+        {sourceTab === "library" && (
+          <Select
+            value={channel}
+            onChange={setChannel}
+            ariaLabel="渠道筛选"
+            options={[{ value: "", label: "全部渠道" }, ...CHANNELS.map((c) => ({ value: c, label: c }))]}
+          />
+        )}
         <Select
           value={salary == null ? "" : String(salary)}
           onChange={(v) => setSalary(v ? Number(v) : null)}
@@ -144,7 +201,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
         >
           仅看远程
         </button>
-        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || channel || salary != null) ? (
+        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || (sourceTab === "library" && channel) || salary != null) ? (
           <button
             className={styles.clearBtn}
             onClick={() => { setFilters({ benefits: [] }); setCity(""); setChannel(""); setSalary(null); }}
@@ -154,7 +211,21 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
         ) : null}
       </div>
 
-      {jobs === null ? (
+      {sourceTab === "external" ? (
+        extLoading ? (
+          <p className={styles.loading}>正在拉取真实岗位数据（RemoteOK / Arbeitnow 官方接口）…</p>
+        ) : extError ? (
+          <div className={`${styles.empty} card`}><p>真实数据源拉取失败，请稍后重试。</p></div>
+        ) : matches.length === 0 ? (
+          <div className={`${styles.empty} card`}><p>暂无匹配的外部职位，调整简历或稍后刷新。</p></div>
+        ) : (
+          <div className={styles.list}>
+            {matches.map(({ job, match }) => (
+              <ExternalCard key={job.id} job={job as ExternalJob} match={match} resumeId={resumeId} />
+            ))}
+          </div>
+        )
+      ) : jobs === null ? (
         <p className={styles.loading}>加载中…</p>
       ) : matches.length === 0 ? (
         <div className={`${styles.empty} card`}>
@@ -163,7 +234,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
       ) : (
         <div className={styles.list}>
           {matches.map(({ job, match }) => (
-            <JobCard key={job.id} job={job} match={match} onDelete={removeJob} resumeId={resumeId} />
+            <JobCard key={job.id} job={job as JobDto} match={match} onDelete={removeJob} resumeId={resumeId} />
           ))}
         </div>
       )}
@@ -182,6 +253,30 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
   );
 }
 
+function MatchDetail({ match }: { match: JobMatch }) {
+  return (
+    <div className={styles.detail}>
+      {match.guidance.length > 0 && (
+        <ul className={styles.guidance}>
+          {match.guidance.map((g, i) => <li key={i}>{g}</li>)}
+        </ul>
+      )}
+      {match.missingKeywords.length > 0 && (
+        <div className={styles.kwBlock}>
+          <span className={styles.kwLabel}>缺失：</span>
+          {match.missingKeywords.map((k) => <span key={k} className={styles.kwMiss}>{k}</span>)}
+        </div>
+      )}
+      {match.matchedKeywords.length > 0 && (
+        <div className={styles.kwBlock}>
+          <span className={styles.kwLabel}>已覆盖：</span>
+          {match.matchedKeywords.map((k) => <span key={k} className={styles.kwHit}>{k}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMatch; onDelete: (id: string) => void; resumeId: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -190,7 +285,10 @@ function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMa
         <span className={`${styles.grade} ${GRADE_STYLE[match.grade]}`}>{match.grade}</span>
         <div className={styles.jobTitle}>
           <strong>{job.role || "未命名职位"}</strong>
-          <span className={styles.company}>{job.company}<span className={styles.sourceTag}>{job.source === "sample" ? "示例库" : "自建"}</span><span className={styles.channelTag}>{job.channel}</span></span>
+          <span className={styles.company}>
+            {job.company}
+            <span className={styles.channelTag}>{job.channel}</span>
+          </span>
         </div>
         <div className={styles.jobMeta}>
           <span className={styles.salary}>{job.salaryText || "薪资面议"}</span>
@@ -220,25 +318,63 @@ function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMa
 
       {open && (
         <div className={styles.detail}>
-          {match.guidance.length > 0 && (
-            <ul className={styles.guidance}>
-              {match.guidance.map((g, i) => <li key={i}>{g}</li>)}
-            </ul>
-          )}
-          {match.missingKeywords.length > 0 && (
-            <div className={styles.kwBlock}>
-              <span className={styles.kwLabel}>缺失：</span>
-              {match.missingKeywords.map((k) => <span key={k} className={styles.kwMiss}>{k}</span>)}
-            </div>
-          )}
-          {match.matchedKeywords.length > 0 && (
-            <div className={styles.kwBlock}>
-              <span className={styles.kwLabel}>已覆盖：</span>
-              {match.matchedKeywords.map((k) => <span key={k} className={styles.kwHit}>{k}</span>)}
-            </div>
-          )}
+          <MatchDetail match={match} />
           <details className={styles.jdDetails}>
             <summary>查看完整 JD</summary>
+            <pre className={styles.jdText}>{job.jdText}</pre>
+          </details>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function ExternalCard({ job, match, resumeId }: { job: ExternalJob; match: JobMatch; resumeId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <article className={`${styles.jobCard} card`}>
+      <div className={styles.jobHead}>
+        <span className={`${styles.grade} ${GRADE_STYLE[match.grade]}`}>{match.grade}</span>
+        <div className={styles.jobTitle}>
+          <strong>{job.role || "未命名职位"}</strong>
+          <span className={styles.company}>
+            {job.company}
+            <span className={styles.realTag}>真实数据 · {job.origin}</span>
+          </span>
+        </div>
+        <div className={styles.jobMeta}>
+          {job.salaryText && <span className={styles.salary}>{job.salaryText}</span>}
+          <span><MapPin size={12} /> {job.city || "Remote"}</span>
+          <span className={styles.matchScore}>{match.score} 分</span>
+        </div>
+      </div>
+
+      <div className={styles.tagRow}>
+        {job.benefits.map((b) => (
+          <span key={b} className={styles.benefitTag}>{b}</span>
+        ))}
+      </div>
+
+      <div className={styles.gradeLine}>
+        <b>{match.gradeLabel}</b>
+        <span>关键词命中 {match.matchedKeywords.length} · 缺失 {match.missingKeywords.length}</span>
+      </div>
+
+      <div className={styles.jobOps}>
+        <button className="btn" onClick={() => setOpen((v) => !v)}>{open ? "收起详情" : "匹配详情与建议"}</button>
+        {job.url && (
+          <a className="btn" href={job.url} target="_blank" rel="noreferrer noopener">
+            <ExternalLink size={13} /> 查看原帖并投递
+          </a>
+        )}
+        <Link className="btn" href={`/editor/${resumeId}`}>去优化简历</Link>
+      </div>
+
+      {open && (
+        <div className={styles.detail}>
+          <MatchDetail match={match} />
+          <details className={styles.jdDetails}>
+            <summary>查看完整 JD（原文）</summary>
             <pre className={styles.jdText}>{job.jdText}</pre>
           </details>
         </div>
@@ -258,7 +394,6 @@ function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: 
       return;
     }
     const e = extractJobFromText(raw);
-    
     setForm({ ...e });
     toast.ok("已识别薪资/城市/福利，请核对后保存");
   }
@@ -327,5 +462,3 @@ function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: 
     </div>
   );
 }
-
-void gradeOf;
