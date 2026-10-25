@@ -219,3 +219,30 @@ describe("技能栈护栏", () => {
     expect(m.grade === "S" || m.grade === "A").toBe(true);
   });
 });
+
+import { classifyJobCategory } from "../src/features/jobs/category";
+
+describe("岗位类别分类器", () => {
+  it("中文职位名精确分类", () => {
+    expect(classifyJobCategory("游戏AI-强化学习算法研究员")).toBe("算法/AI");
+    expect(classifyJobCategory("高级后台开发工程师")).toBe("后端开发");
+    expect(classifyJobCategory("前端开发工程师（高级）")).toBe("前端开发");
+    expect(classifyJobCategory("数据产品经理")).toBe("数据");
+    expect(classifyJobCategory("高级测试开发工程师")).toBe("测试");
+    expect(classifyJobCategory("云原生研发工程师", "Kubernetes 运维")).toBe("运维/DevOps");
+    expect(classifyJobCategory("游戏客户端开发（Unity）")).toBe("游戏开发");
+  });
+
+  it("英文职位名分类", () => {
+    expect(classifyJobCategory("Senior Backend Engineer (Go)")).toBe("后端开发");
+    expect(classifyJobCategory("Frontend Developer React")).toBe("前端开发");
+    expect(classifyJobCategory("Machine Learning Engineer")).toBe("算法/AI");
+    expect(classifyJobCategory("Product Manager")).toBe("产品");
+    expect(classifyJobCategory("DevOps Engineer")).toBe("运维/DevOps");
+  });
+
+  it("无法识别归入其他", () => {
+    expect(classifyJobCategory("神秘岗位")).toBe("其他");
+    expect(classifyJobCategory("")).toBe("其他");
+  });
+});

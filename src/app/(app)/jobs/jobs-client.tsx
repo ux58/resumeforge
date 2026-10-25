@@ -12,6 +12,7 @@ import type { ExternalJob } from "@/features/jobs/external";
 import { filterJobs, matchJob, type JobFilter, type JobMatch } from "@/features/analysis/match";
 import type { ResumeDto } from "@/features/resumes/service";
 import { CHANNELS, CITIES } from "@/shared/cities";
+import { JOB_CATEGORIES, classifyJobCategory } from "@/features/jobs/category";
 import styles from "./jobs.module.scss";
 
 const GRADE_STYLE: Record<JobMatch["grade"], string> = { S: styles.gradeS, A: styles.gradeA, B: styles.gradeB, C: styles.gradeC };
@@ -25,6 +26,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
   const [filters, setFilters] = useState<JobFilter>({ benefits: [], weekendOnly: false, remoteOnly: false });
   const [city, setCity] = useState("");
   const [channel, setChannel] = useState("");
+  const [category, setCategory] = useState("");
   const [salary, setSalary] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [sourceTab, setSourceTab] = useState<SourceTab>("library");
@@ -96,7 +98,8 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
       .filter((j) => !(filters.benefits?.length) || filters.benefits.every((b) => j.benefits.includes(b)))
       .filter((j) => !filters.weekendOnly || j.benefits.includes("双休"))
       .filter((j) => !filters.remoteOnly || isRemoteCity(j.city) || j.benefits.includes("远程办公"))
-      .filter((j) => salary == null || ((j.salaryMaxK ?? j.salaryMinK) != null && (j.salaryMaxK ?? j.salaryMinK ?? 0) >= salary));
+      .filter((j) => salary == null || ((j.salaryMaxK ?? j.salaryMinK) != null && (j.salaryMaxK ?? j.salaryMinK ?? 0) >= salary))
+      .filter((j) => !category || classifyJobCategory(j.role, j.jdText) === category);
 
   const matches = useMemo(() => {
     if (!resume) return [];
@@ -107,13 +110,14 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
         .sort((a, b) => b.match.score - a.match.score);
     }
     if (!jobs) return [];
-    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined }).filter((j) => (channel ? j.channel === channel : true));
+    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined }).filter((j) => (channel ? j.channel === channel : true))
+    .filter((j) => !category || classifyJobCategory(j.role, j.jdText) === category);
     return filtered
       .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
       .sort((a, b) => b.match.score - a.match.score);
     // filterExternal 闭包仅依赖 filters/city/salary，均已列入 deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceTab, jobs, external, resume, filters, city, channel, salary]);
+  }, [sourceTab, jobs, external, resume, filters, city, channel, category, salary]);
 
   const cities = useMemo(() => [...CITIES], []);
 
@@ -173,6 +177,12 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           ariaLabel="城市筛选"
           options={[{ value: "", label: "全部城市" }, ...cities.map((c) => ({ value: c, label: c }))]}
         />
+        <Select
+          value={category}
+          onChange={setCategory}
+          ariaLabel="岗位类别筛选"
+          options={[{ value: "", label: "全部岗位" }, ...JOB_CATEGORIES.map((c) => ({ value: c, label: c }))]}
+        />
         {sourceTab === "library" && (
           <Select
             value={channel}
@@ -213,10 +223,10 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
         >
           仅看远程
         </button>
-        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || (sourceTab === "library" && channel) || salary != null) ? (
+        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || category || (sourceTab === "library" && channel) || salary != null) ? (
           <button
             className={styles.clearBtn}
-            onClick={() => { setFilters({ benefits: [] }); setCity(""); setChannel(""); setSalary(null); }}
+            onClick={() => { setFilters({ benefits: [] }); setCity(""); setChannel(""); setCategory(""); setSalary(null); }}
           >
             <X size={13} /> 清除筛选
           </button>
@@ -313,6 +323,7 @@ function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMa
         {job.benefits.map((b) => (
           <span key={b} className={styles.benefitTag}>{b}</span>
         ))}
+        <span className={styles.catTag}>{classifyJobCategory(job.role, job.jdText)}</span>
         {job.experienceReq && <span className={styles.reqTag}>{job.experienceReq}</span>}
         {job.educationReq && <span className={styles.reqTag}>{job.educationReq}</span>}
       </div>
@@ -362,6 +373,7 @@ function ExternalCard({ job, match, resumeId }: { job: ExternalJob; match: JobMa
       </div>
 
       <div className={styles.tagRow}>
+        <span className={styles.catTag}>{classifyJobCategory(job.role, job.jdText)}</span>
         {job.benefits.map((b) => (
           <span key={b} className={styles.benefitTag}>{b}</span>
         ))}
