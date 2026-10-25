@@ -20,6 +20,9 @@ const TEMPLATES: Array<{ id: TemplateId; name: string }> = [
   { id: "clean", name: "简约" },
   { id: "classic", name: "经典" },
   { id: "twocol", name: "双栏" },
+  { id: "sidebar", name: "侧栏" },
+  { id: "banner", name: "横幅" },
+  { id: "timeline", name: "时间线" },
 ];
 const THEMES: Array<{ id: ThemeId; color: string }> = [
   { id: "blue", color: "#2f6fed" },
@@ -201,11 +204,11 @@ export function Editor({ initial }: { initial: ResumeDto }) {
         </ScrollArea>
         <div className={styles.previewPane}>
           <ScrollArea className={`${styles.previewScroll} ${analysis ? styles.withPanel : ""}`} ariaLabel="简历预览">
-            <div className={styles.paperWrap}>
+            <PaperScaler>
               <div className="print-root">
                 <ResumePreview data={data} template={template} theme={theme} printing />
               </div>
-            </div>
+            </PaperScaler>
           </ScrollArea>
           {showAnalyzer && !showHistory && !showOptimize && (
             <aside className={styles.analyzerPane}>
@@ -268,6 +271,27 @@ export function Editor({ initial }: { initial: ResumeDto }) {
       <span className={styles.printAnchor} hidden>
         <Gauge size={1} />
       </span>
+    </div>
+  );
+}
+
+/** A4 纸自适应缩放：按容器宽度计算 scale，杜绝右侧裁切（替代脆弱的 zoom 媒体查询） */
+function PaperScaler({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const A4_W = 794; // 210mm @96dpi
+    const ro = new ResizeObserver(() => setScale(Math.min(1, (el.clientWidth - 8) / A4_W)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={ref} className={styles.scaleWrap} style={{ height: Math.round(1123 * scale) + 48 }}>
+      <div className={styles.scaleInner} style={{ transform: `scale(${scale})` }}>
+        {children}
+      </div>
     </div>
   );
 }

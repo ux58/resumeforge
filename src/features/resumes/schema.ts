@@ -82,7 +82,7 @@ export const resumeDataSchema = z.preprocess((v) => {
   };
 }, resumeDataObject);
 
-export const TEMPLATE_IDS = ["clean", "classic", "twocol"] as const;
+export const TEMPLATE_IDS = ["clean", "classic", "twocol", "sidebar", "banner", "timeline"] as const;
 export const THEME_IDS = ["blue", "teal", "slate", "wine"] as const;
 
 export const resumeCreateSchema = z.object({

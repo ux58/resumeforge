@@ -102,11 +102,20 @@
   transform-origin: top center;
 }
 
-/* 窄面板时缩放 A4 以适配 */
-@media (max-width: 1500px) {
-  .previewScroll.withPanel .paperWrap { zoom: 0.72; }
+.scaleWrap {
+  position: relative;
 }
 
+.scaleInner {
+  transform-origin: top center;
+  width: 210mm;
+  margin: 0 auto;
+}
+
+@media print {
+  .scaleWrap { height: auto !important; }
+  .scaleInner { transform: none !important; }
+}
 .analyzerPane {
   flex: 0 0 306px;
 }
