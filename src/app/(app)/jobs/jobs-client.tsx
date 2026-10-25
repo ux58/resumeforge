@@ -88,11 +88,21 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
     }
   }
 
+  /** 外部真实数据筛选取决于城市/福利/远程/薪资（含中英城市等价） */
+  const isRemoteCity = (c: string) => c === "远程" || c === "Remote";
+  const filterExternal = (list: ExternalJob[]): ExternalJob[] =>
+    list
+      .filter((j) => !city || j.city.includes(city) || (city === "远程" && (isRemoteCity(j.city) || j.benefits.includes("远程办公"))))
+      .filter((j) => !(filters.benefits?.length) || filters.benefits.every((b) => j.benefits.includes(b)))
+      .filter((j) => !filters.weekendOnly || j.benefits.includes("双休"))
+      .filter((j) => !filters.remoteOnly || isRemoteCity(j.city) || j.benefits.includes("远程办公"))
+      .filter((j) => salary == null || ((j.salaryMaxK ?? j.salaryMinK) != null && (j.salaryMaxK ?? j.salaryMinK ?? 0) >= salary));
+
   const matches = useMemo(() => {
     if (!resume) return [];
     if (sourceTab === "external") {
       if (!external) return [];
-      return external
+      return filterExternal(external)
         .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
         .sort((a, b) => b.match.score - a.match.score);
     }
@@ -101,6 +111,8 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
     return filtered
       .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
       .sort((a, b) => b.match.score - a.match.score);
+    // filterExternal 闭包仅依赖 filters/city/salary，均已列入 deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceTab, jobs, external, resume, filters, city, channel, salary]);
 
   const cities = useMemo(() => [...CITIES], []);
