@@ -342,3 +342,14 @@
   color: var(--text-faint);
   vertical-align: 1px;
 }
+
+.channelTag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10.5px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  vertical-align: 1px;
+}

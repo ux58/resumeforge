@@ -7,8 +7,10 @@ import { apiJson, apiJsonBody } from "@/shared/api-client";
 import { toast } from "@/components/toast";
 import { Select } from "@/components/select";
 import { extractJobFromText, KNOWN_BENEFITS, type JobDto } from "@/features/jobs/schema";
+import type { JobCreateInput } from "@/features/jobs/schema";
 import { filterJobs, matchJob, gradeOf, type JobFilter, type JobMatch } from "@/features/analysis/match";
 import type { ResumeDto } from "@/features/resumes/service";
+import { CHANNELS, CITIES } from "@/shared/cities";
 import styles from "./jobs.module.scss";
 
 const GRADE_STYLE: Record<JobMatch["grade"], string> = { S: styles.gradeS, A: styles.gradeA, B: styles.gradeB, C: styles.gradeC };
@@ -19,6 +21,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
   const [resumeId, setResumeId] = useState(resumes[0]?.id ?? "");
   const [filters, setFilters] = useState<JobFilter>({ benefits: [], weekendOnly: false, remoteOnly: false });
   const [city, setCity] = useState("");
+  const [channel, setChannel] = useState("");
   const [salary, setSalary] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,13 +36,13 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
 
   const matches = useMemo(() => {
     if (!jobs || !resume) return [];
-    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined });
+    const filtered = filterJobs(jobs, { ...filters, city: city || undefined, salaryMinK: salary ?? undefined }).filter((j) => (channel ? j.channel === channel : true));
     return filtered
       .map((j) => ({ job: j, match: matchJob(resume.data, j) }))
       .sort((a, b) => b.match.score - a.match.score);
-  }, [jobs, resume, filters, city, salary]);
+  }, [jobs, resume, filters, city, channel, salary]);
 
-  const cities = useMemo(() => [...new Set((jobs ?? []).map((j) => j.city).filter(Boolean))], [jobs]);
+  const cities = useMemo(() => [...CITIES], []);
 
   async function refresh() {
     setRefreshing(true);
@@ -104,6 +107,12 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           options={[{ value: "", label: "全部城市" }, ...cities.map((c) => ({ value: c, label: c }))]}
         />
         <Select
+          value={channel}
+          onChange={setChannel}
+          ariaLabel="渠道筛选"
+          options={[{ value: "", label: "全部渠道" }, ...CHANNELS.map((c) => ({ value: c, label: c }))]}
+        />
+        <Select
           value={salary == null ? "" : String(salary)}
           onChange={(v) => setSalary(v ? Number(v) : null)}
           ariaLabel="月薪下限筛选"
@@ -135,10 +144,10 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
         >
           仅看远程
         </button>
-        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || salary != null) ? (
+        {(filters.benefits?.length || filters.weekendOnly || filters.remoteOnly || city || channel || salary != null) ? (
           <button
             className={styles.clearBtn}
-            onClick={() => { setFilters({ benefits: [] }); setCity(""); setSalary(null); }}
+            onClick={() => { setFilters({ benefits: [] }); setCity(""); setChannel(""); setSalary(null); }}
           >
             <X size={13} /> 清除筛选
           </button>
@@ -181,7 +190,7 @@ function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMa
         <span className={`${styles.grade} ${GRADE_STYLE[match.grade]}`}>{match.grade}</span>
         <div className={styles.jobTitle}>
           <strong>{job.role || "未命名职位"}</strong>
-          <span className={styles.company}>{job.company}<span className={styles.sourceTag}>{job.source === "sample" ? "示例库" : "自建"}</span></span>
+          <span className={styles.company}>{job.company}<span className={styles.sourceTag}>{job.source === "sample" ? "示例库" : "自建"}</span><span className={styles.channelTag}>{job.channel}</span></span>
         </div>
         <div className={styles.jobMeta}>
           <span className={styles.salary}>{job.salaryText || "薪资面议"}</span>
@@ -294,6 +303,7 @@ function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: 
               <div className="field"><label>薪资</label><input value={form.salaryText} onChange={(e) => set("salaryText")(e.target.value)} /></div>
               <div className="field"><label>经验要求</label><input value={form.experienceReq} onChange={(e) => set("experienceReq")(e.target.value)} /></div>
               <div className="field"><label>学历要求</label><input value={form.educationReq} onChange={(e) => set("educationReq")(e.target.value)} /></div>
+              <div className="field" style={{ gridColumn: "1 / -1" }}><label>来源渠道</label><Select value={form.channel} onChange={(v) => setForm((f) => (f ? { ...f, channel: v as JobCreateInput["channel"] } : f))} ariaLabel="来源渠道" options={CHANNELS.map((c) => ({ value: c, label: c }))} /></div>
             </div>
             <div className={styles.tagPick}>
               {KNOWN_BENEFITS.map((b) => (

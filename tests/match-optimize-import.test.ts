@@ -10,7 +10,7 @@ function resume(patch: Partial<ResumeData>): ResumeData {
 }
 
 const JOB: JobDto = {
-  id: "j1", company: "X 公司", role: "后端工程师", city: "上海", salaryText: "25-40K", salaryMinK: 25, salaryMaxK: 40,
+  id: "j1", channel: "BOSS直聘", company: "X 公司", role: "后端工程师", city: "上海", salaryText: "25-40K", salaryMinK: 25, salaryMaxK: 40,
   benefits: ["五险一金", "双休"], experienceReq: "3年", educationReq: "本科",
   jdText: "岗位职责：负责 Kubernetes 云原生平台建设，主导 Go 微服务架构设计，参与 Prometheus 监控体系落地。任职要求：3年以上后端经验，精通 Go 与 Kubernetes。福利：五险一金、双休、弹性工作。",
   source: "sample", createdAt: "2026-01-01",

@@ -80,14 +80,21 @@ export function gradeOf(score: number): { grade: JobMatch["grade"]; gradeLabel: 
   return { grade: "C", gradeLabel: "匹配度较低" };
 }
 
-export function matchJob(resume: ResumeData, job: Pick<JobDto, "id" | "city" | "benefits" | "jdText">): JobMatch {
+export function matchJob(resume: ResumeData, job: Pick<JobDto, "id" | "city" | "benefits" | "jdText" | "educationReq" | "experienceReq">): JobMatch {
   const corpus = resumeCorpus(resume);
   const keywords = extractJdKeywords(job.jdText).slice(0, 40);
-  const matchedKeywords = keywords.filter((k) => keywordHit(k, corpus));
-  const missingKeywords = keywords.filter((k) => !keywordHit(k, corpus));
+  // 频次加权：JD 中出现越靠前（频次越高）的关键词权重越大
+  const weight = (i: number): number => (i < 10 ? 2 : 1);
+  const totalWeight = keywords.reduce((sum, _, i) => sum + weight(i), 0);
+  let hitWeight = 0;
+  const matchedKeywords: string[] = [];
+  const missingKeywords: string[] = [];
+  keywords.forEach((k, i) => {
+    if (keywordHit(k, corpus)) { hitWeight += weight(i); matchedKeywords.push(k); }
+    else missingKeywords.push(k);
+  });
+  const coverage = totalWeight ? hitWeight / totalWeight : 0;
 
-  // 覆盖度：关键词命中占比（JD 高频词已按频次排序，取前 40 个）
-  const coverage = keywords.length ? matchedKeywords.length / keywords.length : 0;
 
   // 技能标签命中（简历 skills 与 JD 文本对照）
   const skillHit = resume.skills.filter((s) => job.jdText.toLowerCase().includes(s.name.toLowerCase())).length;
@@ -107,14 +114,32 @@ export function matchJob(resume: ResumeData, job: Pick<JobDto, "id" | "city" | "
   const reqMin = reqYears ? parseInt(reqYears[1] ?? reqYears[2] ?? "0", 10) : null;
   const expScore = resumeYears == null || reqMin == null ? 0.6 : resumeYears >= reqMin ? 1 : Math.max(0.2, resumeYears / reqMin);
 
-  const score = Math.round(
-    coverage * 55 + skillRatio * 20 + cityScore * 10 + expScore * 15,
-  );
+  const score0 = coverage * 55 + skillRatio * 20 + cityScore * 10 + expScore * 15;
+
+  // 学历硬性条件：简历最高学历低于要求时惩罚
+  const DEGREE_ORDER = ["不限", "高中", "大专", "专科", "本科", "研究生", "硕士", "博士"];
+  const reqEdu = DEGREE_ORDER.indexOf((job as { educationReq?: string }).educationReq?.replace(/及|以上|学历/g, "") ?? "");
+  let score = score0;
+  let eduPenalty = false;
+  if (reqEdu > 0) {
+    const highest = resume.education
+      .map((e) => DEGREE_ORDER.indexOf(e.degree.replace(/（.*）/, "")))
+      .filter((v) => v > 0)
+      .sort((a, b) => b - a)[0];
+    if (highest != null && highest < reqEdu) {
+      score = score0 * 0.88;
+      eduPenalty = true;
+    }
+  }
+  score = Math.round(score);
 
   const { grade, gradeLabel } = gradeOf(score);
 
   // ---------- 指导建议 ----------
   const guidance: string[] = [];
+  if (eduPenalty) {
+    guidance.push(`学历提示：该职位要求${(job as { educationReq?: string }).educationReq}，简历最高学历未达标。若在读/在职提升中，建议在教育经历注明预期获得时间`);
+  }
   if (missingKeywords.length) {
     guidance.push(`补齐关键词：JD 中出现但简历未覆盖——${missingKeywords.slice(0, 5).join("、")}。若有相关经验，补进对应条目可直接提升 ATS 通过率`);
   }

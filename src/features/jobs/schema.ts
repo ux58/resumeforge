@@ -29,7 +29,8 @@ export const jobCreateSchema = z.object({
   experienceReq: z.string().trim().max(60).default(""),
   educationReq: z.string().trim().max(60).default(""),
   jdText: z.string().trim().max(20000).default(""),
-  source: z.enum(["manual", "sample", "extract"]).default("manual"),
+  channel: z.enum(['BOSS直聘','猎聘','智联招聘','前程无忧','拉勾','脉脉','内推','官网','其他']).default('其他'),
+  source: z.enum(['manual', 'sample', 'extract']).default('manual'),
 });
 
 export const jobUpdateSchema = jobCreateSchema.partial().omit({ source: true });
@@ -37,6 +38,7 @@ export const jobUpdateSchema = jobCreateSchema.partial().omit({ source: true });
 export type JobCreateInput = z.infer<typeof jobCreateSchema>;
 export type JobDto = {
   id: string;
+  channel: string;
   company: string;
   role: string;
   city: string;
@@ -54,7 +56,7 @@ export type JobDto = {
 /** 从粘贴的 JD 原文中智能识别：薪资区间 / 城市 / 福利标签 / 经验学历要求 */
 export function extractJobFromText(rawText: string, companyFallback = ""): JobCreateInput {
   const text = rawText.trim();
-  const out: JobCreateInput = { company: companyFallback, role: "", city: "", salaryText: "", benefits: [], experienceReq: "", educationReq: "", jdText: text, source: "extract" };
+  const out: JobCreateInput = { company: companyFallback, role: "", city: "", salaryText: "", benefits: [], experienceReq: "", educationReq: "", jdText: text, channel: "其他", source: "extract" };
 
   // 薪资：25-40K / 20k-35k / 15-25K·14薪 / 2万-3.5万
   const salaryMatch = text.match(/(\d{1,3})\s*[-~至到]\s*(\d{1,3})\s*([kK千万])?(?:·(\d{1,2})薪)?/);
