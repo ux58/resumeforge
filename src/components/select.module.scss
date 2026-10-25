@@ -23,22 +23,28 @@
 .chev { color: var(--text-faint); transition: transform var(--dur-fast); }
 .chevOpen { transform: rotate(180deg); }
 
-.list {
+.listWrap {
   position: absolute;
   z-index: 300;
   top: calc(100% + 4px);
   left: 0;
   min-width: max(100%, 140px);
-  max-height: 280px;
-  overflow-y: auto;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
   background: var(--bg-card);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   animation: pop-in 0.15s var(--ease-out) both;
+  overflow: hidden;
+}
+
+.listScroll {
+  height: 100%;
+}
+
+.list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
 }
 
 .option {

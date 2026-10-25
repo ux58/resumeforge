@@ -6,6 +6,7 @@ import { Briefcase, ExternalLink, MapPin, Plus, RefreshCw, Trash2, X } from "luc
 import { apiJson, apiJsonBody } from "@/shared/api-client";
 import { toast } from "@/components/toast";
 import { Select } from "@/components/select";
+import { ScrollArea } from "@/components/scroll-area";
 import { extractJobFromText, KNOWN_BENEFITS, type JobDto } from "@/features/jobs/schema";
 import type { JobCreateInput } from "@/features/jobs/schema";
 import type { ExternalJob } from "@/features/jobs/external";
@@ -344,7 +345,7 @@ function JobCard({ job, match, onDelete, resumeId }: { job: JobDto; match: JobMa
           <MatchDetail match={match} />
           <details className={styles.jdDetails}>
             <summary>查看完整 JD</summary>
-            <pre className={styles.jdText}>{job.jdText}</pre>
+            <ScrollArea className={styles.jdScroll} ariaLabel="JD 全文"><pre className={styles.jdText}>{job.jdText}</pre></ScrollArea>
           </details>
         </div>
       )}
@@ -399,7 +400,7 @@ function ExternalCard({ job, match, resumeId }: { job: ExternalJob; match: JobMa
           <MatchDetail match={match} />
           <details className={styles.jdDetails}>
             <summary>查看完整 JD（原文）</summary>
-            <pre className={styles.jdText}>{job.jdText}</pre>
+            <ScrollArea className={styles.jdScroll} ariaLabel="JD 全文"><pre className={styles.jdText}>{job.jdText}</pre></ScrollArea>
           </details>
         </div>
       )}
@@ -443,6 +444,8 @@ function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: 
           <h3><Briefcase size={15} /> 添加职位</h3>
           <button className="btn" onClick={onClose} aria-label="关闭"><X size={15} /></button>
         </div>
+        <div className={styles.dialogScroll}>
+        <ScrollArea className={styles.dialogScrollArea} ariaLabel="添加职位内容">
         <p className={styles.hint}>把 BOSS 直聘 / 拉勾 / 猎聘等平台的职位描述整段粘贴进来，系统自动识别薪资、城市、福利标签与经验要求。</p>
         <textarea
           className={styles.importArea}
@@ -451,9 +454,7 @@ function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: 
           onChange={(e) => setRaw(e.target.value)}
           placeholder={"产品经理（数据方向）\n北京 · 25-40K·15薪\n五险一金 双休 弹性工作 年终奖\n岗位职责：负责数据平台规划…\n任职要求：3-5年 B 端产品经验，熟悉 SQL…"}
         />
-        {!form ? (
-          <button className="btn primary" onClick={doExtract}>智能识别</button>
-        ) : (
+        {form && (
           <>
             <div className={styles.grid2}>
               <div className="field"><label>公司</label><input value={form.company} onChange={(e) => set("company")(e.target.value)} /></div>
@@ -476,12 +477,17 @@ function AddJobDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (j: 
                 </button>
               ))}
             </div>
-            <div className={styles.importActions}>
-              <button className="btn" onClick={() => setForm(null)}>重新识别</button>
-              <button className="btn primary" onClick={doSave} disabled={busy}>{busy ? "保存中…" : "保存到职位库"}</button>
-            </div>
           </>
         )}
+        </ScrollArea>
+        </div>
+        {form && (
+          <div className={styles.importActions}>
+            <button className="btn" onClick={() => setForm(null)}>重新识别</button>
+            <button className="btn primary" onClick={doSave} disabled={busy}>{busy ? "保存中…" : "保存到职位库"}</button>
+          </div>
+        )}
+        {!form && <button className="btn primary" onClick={doExtract}>智能识别</button>}
       </div>
     </div>
   );

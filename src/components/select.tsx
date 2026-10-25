@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import { ScrollArea } from "@/components/scroll-area";
 import styles from "./select.module.scss";
 
 export interface SelectOption {
@@ -85,23 +86,27 @@ export function Select({
         <ChevronDown size={13} className={open ? styles.chevOpen : styles.chev} />
       </button>
       {open && (
-        <ul ref={listRef} className={styles.list} role="listbox" tabIndex={-1}>
-          {options.map((o, i) => (
-            <li key={o.value}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={o.value === value}
-                className={`${styles.option} ${i === active ? styles.optionActive : ""} ${o.value === value ? styles.optionSelected : ""}`}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => commit(i)}
-              >
-                <span>{o.label}</span>
-                {o.value === value && <Check size={13} />}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className={styles.listWrap} style={{ height: Math.min(options.length * 38 + 8, 272) }}>
+          <ScrollArea className={styles.listScroll} ariaLabel="选项列表">
+            <ul ref={listRef} className={styles.list} role="listbox" tabIndex={-1}>
+              {options.map((o, i) => (
+                <li key={o.value}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={o.value === value}
+                    className={`${styles.option} ${i === active ? styles.optionActive : ""} ${o.value === value ? styles.optionSelected : ""}`}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => commit(i)}
+                  >
+                    <span>{o.label}</span>
+                    {o.value === value && <Check size={13} />}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+        </div>
       )}
     </div>
   );

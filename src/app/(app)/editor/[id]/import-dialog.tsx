@@ -5,6 +5,7 @@ import { FileUp, X } from "lucide-react";
 import { parseResumeText } from "@/features/resumes/import";
 import type { ResumeData } from "@/features/resumes/schema";
 import { toast } from "@/components/toast";
+import { ScrollArea } from "@/components/scroll-area";
 import styles from "./panels.module.scss";
 
 /** 导入简历：粘贴纯文本 → 启发式解析 → 预览识别结果 → 合并进表单 */
@@ -42,6 +43,8 @@ export function ImportDialog({
           <h3><FileUp size={15} /> 导入简历文本</h3>
           <button className="btn" onClick={onClose} aria-label="关闭"><X size={15} /></button>
         </div>
+        <div className={styles.dialogScroll}>
+        <ScrollArea className={styles.dialogScrollArea} ariaLabel="导入内容">
         <p className={styles.hint}>
           粘贴任意格式的简历纯文本（支持从 Word/PDF 复制），系统按标题分节与日期区间启发式解析，
           结果进入左侧表单供人工核对——不会直接覆盖保存。
@@ -53,9 +56,7 @@ export function ImportDialog({
           onChange={(e) => setText(e.target.value)}
           placeholder={"陈晓\n高级后端工程师\n邮箱：chen@example.com  手机：138xxxx\n\n工作经历\n星河科技 高级后端工程师 2021.07 - 至今\n- 主导支付网关重构，P99 延迟降低 85%\n\n教育经历\n浙江大学 本科 2014-2018"}
         />
-        {!result ? (
-          <button className="btn primary" onClick={doParse}>解析文本</button>
-        ) : (
+        {result && (
           <div className={styles.importResult}>
             <div className={styles.kv}>
               <span>姓名：{result.data.basics.name || "未识别"}</span>
@@ -71,12 +72,17 @@ export function ImportDialog({
                 {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
               </ul>
             )}
-            <div className={styles.importActions}>
-              <button className="btn" onClick={() => setResult(null)}>重新解析</button>
-              <button className="btn primary" onClick={doImport}>导入到表单（不直接保存）</button>
-            </div>
           </div>
         )}
+        </ScrollArea>
+        </div>
+        {result && (
+          <div className={styles.importActions}>
+            <button className="btn" onClick={() => setResult(null)}>重新解析</button>
+            <button className="btn primary" onClick={doImport}>导入到表单（不直接保存）</button>
+          </div>
+        )}
+        {!result && <button className="btn primary" onClick={doParse}>解析文本</button>}
       </div>
     </div>
   );

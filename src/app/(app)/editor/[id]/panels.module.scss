@@ -178,12 +178,20 @@
 .dialog {
   width: min(640px, calc(100vw - 40px));
   max-height: calc(100vh - 60px);
-  overflow-y: auto;
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   animation: pop-in 0.25s var(--ease-out) both;
+}
+
+.dialogScroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.dialogScrollArea {
+  height: 100%;
 }
 
 .importArea {
