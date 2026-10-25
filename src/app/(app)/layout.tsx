@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/server/auth";
 import { FileText } from "lucide-react";
@@ -12,13 +13,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <a href="/dashboard" className={styles.brand} aria-label="返回仪表盘">
+        <Link href="/dashboard" className={styles.brand} aria-label="返回仪表盘">
           <FileText size={16} strokeWidth={2.2} />
           ResumeForge
-        </a>
+        </Link>
         <nav className={styles.nav} aria-label="主导航">
-          <a href="/dashboard">我的简历</a>
-          <a href="/jobs">职位匹配</a>
+          <Link href="/dashboard">我的简历</Link>
+          <Link href="/jobs">职位匹配</Link>
         </nav>
         <span className={styles.spacer} />
         <ThemeToggle />

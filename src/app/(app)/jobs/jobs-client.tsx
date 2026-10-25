@@ -242,7 +242,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
         ) : matches.length === 0 ? (
           <div className={`${styles.empty} card`}><p>暂无匹配的外部职位，调整简历或稍后刷新。</p></div>
         ) : (
-          <div className={styles.list}>
+          <div key={sourceTab} className={`${styles.list} ${styles.tabPanel}`}>
             {matches.map(({ job, match }) => (
               <ExternalCard key={job.id} job={job as ExternalJob} match={match} resumeId={resumeId} />
             ))}
@@ -255,7 +255,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           <p>没有符合条件的职位。调整筛选，或点「添加职位」粘贴新的 JD。</p>
         </div>
       ) : (
-        <div className={styles.list}>
+        <div key={sourceTab} className={`${styles.list} ${styles.tabPanel}`}>
           {matches.map(({ job, match }) => (
             <JobCard key={job.id} job={job as JobDto} match={match} onDelete={removeJob} resumeId={resumeId} />
           ))}
