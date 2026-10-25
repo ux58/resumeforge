@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, Gauge, History, Printer, Share2, Wand2, FileUp } from "lucide-react";
+import { ArrowLeft, Download, Gauge, History, Maximize2, Printer, Share2, Wand2, FileUp } from "lucide-react";
 import { apiJsonBody } from "@/shared/api-client";
 import { toast } from "@/components/toast";
 import type { ResumeData, TemplateId, ThemeId } from "@/features/resumes/schema";
@@ -14,6 +14,7 @@ import { AnalyzerPanel } from "./analyzer-panel";
 import { HistoryPanel } from "./history-panel";
 import { OptimizePanel } from "./optimize-panel";
 import { ImportDialog } from "./import-dialog";
+import { FullscreenPreview } from "./fullscreen-preview";
 import styles from "./editor.module.scss";
 
 const TEMPLATES: Array<{ id: TemplateId; name: string }> = [
@@ -42,6 +43,7 @@ export function Editor({ initial }: { initial: ResumeDto }) {
   const [showHistory, setShowHistory] = useState(false);
   const [showOptimize, setShowOptimize] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
   const [shareEnabled, setShareEnabled] = useState(initial.shareEnabled);
   const dirtyRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,6 +195,9 @@ export function Editor({ initial }: { initial: ResumeDto }) {
         <button className="btn" onClick={exportJson}>
           <Download size={14} strokeWidth={2.2} /> JSON
         </button>
+        <button className="btn" onClick={() => setShowFullscreen(true)}>
+          <Maximize2 size={14} strokeWidth={2.2} /> 全屏预览
+        </button>
         <button className="btn primary" onClick={() => window.print()}>
           <Printer size={14} strokeWidth={2.2} /> 打印 / PDF
         </button>
@@ -265,6 +270,15 @@ export function Editor({ initial }: { initial: ResumeDto }) {
             markDirty();
             toast.ok("已导入到表单，请核对后保存");
           }}
+        />
+      )}
+
+      {showFullscreen && (
+        <FullscreenPreview
+          data={data}
+          template={template}
+          theme={theme}
+          onClose={() => setShowFullscreen(false)}
         />
       )}
 
