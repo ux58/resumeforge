@@ -161,3 +161,61 @@ describe("简历文本导入", () => {
     expect(r.warnings.length).toBeGreaterThan(0);
   });
 });
+
+import { normalizeTencent, normalizeV2ex, normalizeEleduck } from "../src/features/jobs/external";
+
+describe("真实数据源归一化", () => {
+  it("腾讯官网：城市/事业部/JD/经验映射", () => {
+    const out = normalizeTencent([
+      { RecruitPostName: "游戏AI-强化学习算法研究员", LocationName: "深圳", CategoryName: "技术", BGName: "IEG", Responsibility: "参与腾讯游戏AI算法研究</p>强化学习、模仿学习", RequireWorkYearsName: "3年以上", PostURL: "https://careers.tencent.com/jobdesc.html?postId=1" },
+    ]);
+    expect(out[0].city).toBe("深圳");
+    expect(out[0].company).toContain("腾讯");
+    expect(out[0].origin).toBe("腾讯官网");
+    expect(out[0].jdText).toContain("强化学习");
+    expect(out[0].url).toContain("postId=1");
+  });
+
+  it("V2EX：标题前缀剥离 + 城市识别 + 薪资提取", () => {
+    const out = normalizeV2ex([
+      { id: 1, title: "[北京] 招聘后端工程师 Go 25k-40k", content: "负责高并发服务开发，远程友好", url: "https://v2ex.com/t/1" },
+    ]);
+    expect(out[0].city).toBe("北京");
+    expect(out[0].role).not.toContain("[");
+    expect(out[0].salaryText).toBe("25k-40k");
+    expect(out[0].origin).toBe("V2EX酷工作");
+  });
+
+  it("电鸭：远程默认城市 + 发布链接", () => {
+    const out = normalizeEleduck([{ id: "abc", title: "全栈工程师｜某远程团队", summary: "React + Node.js 远程协作" }]);
+    expect(out[0].city).toBe("远程");
+    expect(out[0].benefits).toContain("远程办公");
+    expect(out[0].url).toBe("https://eleduck.com/posts/abc");
+    expect(out[0].origin).toBe("电鸭社区");
+  });
+});
+
+describe("技能栈护栏", () => {
+  it("技能零重叠的跨职能匹配被封顶 B 级并给出建议", () => {
+    const pm = resume({
+      basics: { ...EMPTY_RESUME.basics, name: "产品", location: "上海", summary: "负责后台服务开发，协同 Go 与 MySQL 团队，熟悉分布式系统与 Kubernetes 的产品节奏，参与平台架构设计" },
+      skills: [{ name: "产品规划", level: 5 }, { name: "Axure", level: 5 }, { name: "用户研究", level: 4 }],
+      experience: [{ company: "X", role: "产品经理", start: "2020", end: "", bullets: "6年经验，负责后台服务开发与平台架构设计评审" }],
+    });
+    const backendJd: JobDto = { ...JOB, id: "be", jdText: "负责后台服务开发，精通 Go，熟悉分布式系统与 Kubernetes，参与平台架构设计，3年以上经验" };
+    const m = matchJob(pm, backendJd);
+    expect(m.score).toBeLessThanOrEqual(69);
+    expect(m.grade).toBe("B");
+    expect(m.guidance.some((g) => g.includes("技能错配"))).toBe(true);
+  });
+
+  it("技能有重叠的匹配不受封顶影响", () => {
+    const dev = resume({
+      basics: { ...EMPTY_RESUME.basics, name: "开发", location: "上海" },
+      skills: [{ name: "Go", level: 5 }, { name: "Kubernetes", level: 4 }, { name: "MySQL", level: 4 }],
+      experience: [{ company: "Y", role: "后端", start: "2020", end: "", bullets: "7年后端开发经验，精通 Go 与 MySQL 后台服务开发，负责 Kubernetes 平台架构设计与分布式系统建设" }],
+    });
+    const m = matchJob(dev, { ...JOB, jdText: "负责后台服务开发，精通 Go 与 MySQL，熟悉分布式系统与 Kubernetes，参与平台架构设计，3年以上经验", experienceReq: "3年" });
+    expect(m.grade === "S" || m.grade === "A").toBe(true);
+  });
+});

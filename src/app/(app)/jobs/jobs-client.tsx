@@ -123,7 +123,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           <p className={styles.sub}>
             {sourceTab === "library"
               ? "粘贴任意招聘平台的 JD 即可入库分析；按匹配度分级（S/A/B/C），福利标签一目了然"
-              : "真实在招岗位——RemoteOK / Arbeitnow 官方开放接口实时拉取（国际与远程职位为主），30 分钟缓存"}
+              : "真实在招岗位——腾讯官网 / V2EX酷工作 / 电鸭社区 / RemoteOK / Arbeitnow 五源实时拉取（30 分钟缓存），单源故障不影响其余"}
           </p>
         </div>
         <div className={styles.headOps}>
@@ -150,7 +150,7 @@ export function JobsClient({ resumes }: { resumes: ResumeDto[] }) {
           职位库（自建/导入）
         </button>
         <button role="tab" aria-selected={sourceTab === "external"} className={`${styles.tabBtn} ${sourceTab === "external" ? styles.tabOn : ""}`} onClick={() => setSourceTab("external")}>
-          真实数据源（国际·远程）
+          真实数据源（国内官网+社区+国际）
         </button>
       </div>
 

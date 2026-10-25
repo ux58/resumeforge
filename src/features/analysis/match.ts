@@ -131,12 +131,22 @@ export function matchJob(resume: ResumeData, job: Pick<JobDto, "id" | "city" | "
       eduPenalty = true;
     }
   }
+
+  // 技能栈护栏：简历已有 ≥3 项技能但与 JD 零重叠时，视为跨职能错配，封顶 B 级
+  let skillCapped = false;
+  if (resume.skills.length >= 3 && skillHit === 0) {
+    score = Math.min(score, 69);
+    skillCapped = true;
+  }
   score = Math.round(score);
 
   const { grade, gradeLabel } = gradeOf(score);
 
   // ---------- 指导建议 ----------
   const guidance: string[] = [];
+  if (skillCapped) {
+    guidance.push("技能错配：简历技能与该 JD 无重叠，属于跨职能方向。建议投递同职能岗位，或先补齐该方向核心技能再尝试");
+  }
   if (eduPenalty) {
     guidance.push(`学历提示：该职位要求${(job as { educationReq?: string }).educationReq}，简历最高学历未达标。若在读/在职提升中，建议在教育经历注明预期获得时间`);
   }
